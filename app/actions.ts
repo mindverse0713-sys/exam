@@ -5,18 +5,19 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { startExamSchema, submitExamSchema } from '@/lib/schemas'
 
 export async function startExam(formData: FormData) {
-  const rawData = {
-    name: formData.get('name')?.toString() || '',
-    grade: parseInt(formData.get('grade')?.toString() || '0'),
-    variant: formData.get('variant')?.toString() || '',
-  }
+  try {
+    const rawData = {
+      name: formData.get('name')?.toString() || '',
+      grade: parseInt(formData.get('grade')?.toString() || '0'),
+      variant: formData.get('variant')?.toString() || '',
+    }
 
-  // Validate
-  const parsed = startExamSchema.parse({
-    name: rawData.name,
-    grade: rawData.grade as 10 | 11 | 12,
-    variant: rawData.variant as 'A' | 'B',
-  })
+    // Validate
+    const parsed = startExamSchema.parse({
+      name: rawData.name,
+      grade: rawData.grade as 10 | 11 | 12,
+      variant: rawData.variant as 'A' | 'B',
+    })
 
   // Create attempt
   const { data, error } = await supabase
@@ -30,11 +31,23 @@ export async function startExam(formData: FormData) {
     .select('id')
     .single()
 
-  if (error || !data) {
-    throw new Error('Attempt үүсгэхэд алдаа гарлаа')
+  if (error) {
+    console.error('Supabase error:', error)
+    throw new Error(`Attempt үүсгэхэд алдаа гарлаа: ${error.message}`)
   }
 
-  redirect(`/exam/${data.id}`)
+    if (!data) {
+      throw new Error('Attempt үүсгэхэд алдаа гарлаа: Data буцаагүй')
+    }
+
+    redirect(`/exam/${data.id}`)
+  } catch (error) {
+    console.error('startExam error:', error)
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Сорил эхлүүлэхэд алдаа гарлаа')
+  }
 }
 
 export async function submitExam(formData: FormData) {
