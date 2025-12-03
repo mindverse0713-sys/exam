@@ -73,7 +73,7 @@ export default function StartForm() {
                   value={g}
                   checked={grade === g}
                   onChange={() => setGrade(g as 10 | 11 | 12)}
-                  disabled={isLocked && urlGrade && parseInt(urlGrade) !== g}
+                  disabled={!!(isLocked && urlGrade && parseInt(urlGrade) !== g)}
                   required
                   className="mr-2"
                 />
@@ -96,7 +96,7 @@ export default function StartForm() {
                   value={v}
                   checked={variant === v}
                   onChange={() => setVariant(v)}
-                  disabled={isLocked && urlVariant && urlVariant !== v}
+                  disabled={!!(isLocked && urlVariant && urlVariant !== v)}
                   required
                   className="mr-2"
                 />
