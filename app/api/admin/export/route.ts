@@ -197,18 +197,24 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Сурагч алга бол (score null/undefined) дүн хоосон байх
+          // Сурагч сорил бөглөсөн эсэхийг шалгах (submitted_at байвал бөглөсөн)
+          const hasSubmitted = attempt.submitted_at !== null && attempt.submitted_at !== undefined
+          // Score байгаа эсэх
           const hasScore = attempt.score !== null && attempt.score !== undefined
           
+          // Сорил бөглөсөн бол дүн тооцох, эсвэл score байвал ашиглах
           const score = hasScore
             ? (typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0))
+            : hasSubmitted
+            ? qScores.reduce((a, b) => a + b, 0) // Бөглөсөн ч score null байвал тооцох
             : null
           const total =
             typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
 
           let percent: number | '' | null = null
-          if (hasScore && total > 0 && score !== null) {
-            percent = Math.round((score / total) * 100)
+          const finalScore = score !== null ? score : (hasSubmitted ? qScores.reduce((a, b) => a + b, 0) : null)
+          if (finalScore !== null && total > 0) {
+            percent = Math.round((finalScore / total) * 100)
           }
 
           let level = ''
