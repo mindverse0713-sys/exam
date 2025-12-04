@@ -197,18 +197,22 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          const score =
-            typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0)
+          // Сурагч алга бол (score null/undefined) дүн хоосон байх
+          const hasScore = attempt.score !== null && attempt.score !== undefined
+          
+          const score = hasScore
+            ? (typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0))
+            : null
           const total =
             typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
 
-          let percent: number | '' = ''
-          if (total > 0) {
+          let percent: number | '' | null = null
+          if (hasScore && total > 0 && score !== null) {
             percent = Math.round((score / total) * 100)
           }
 
           let level = ''
-          if (typeof percent === 'number') {
+          if (hasScore && typeof percent === 'number') {
             if (percent >= 90) level = 'I'
             else if (percent >= 80) level = 'II'
             else if (percent >= 70) level = 'III'
@@ -228,14 +232,15 @@ export async function GET(request: NextRequest) {
 
           if (!worksheet[cellNumber]) worksheet[cellNumber] = { t: 'n', v: 0 }
           if (!worksheet[cellName]) worksheet[cellName] = { t: 's', v: '' }
-          if (!worksheet[cellScore]) worksheet[cellScore] = { t: 'n', v: 0 }
-          if (!worksheet[cellPercent]) worksheet[cellPercent] = { t: 'n', v: 0 }
+          if (!worksheet[cellScore]) worksheet[cellScore] = { t: 'n', v: null }
+          if (!worksheet[cellPercent]) worksheet[cellPercent] = { t: 'n', v: null }
           if (!worksheet[cellLevel]) worksheet[cellLevel] = { t: 's', v: '' }
 
           worksheet[cellNumber].v = index + 1
           worksheet[cellName].v = attempt.student_name || ''
-          worksheet[cellScore].v = score
-          worksheet[cellPercent].v = typeof percent === 'number' ? percent : 0
+          // Сурагч алга бол хоосон байх
+          worksheet[cellScore].v = hasScore ? (score ?? '') : ''
+          worksheet[cellPercent].v = hasScore && typeof percent === 'number' ? percent : ''
           worksheet[cellLevel].v = level
 
           // Асуултын баганууд (1-20)
@@ -299,18 +304,22 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          const score =
-            typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0)
+          // Сурагч алга бол (score null/undefined) дүн хоосон байх
+          const hasScore = attempt.score !== null && attempt.score !== undefined
+          
+          const score = hasScore
+            ? (typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0))
+            : null
           const total =
             typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
 
-          let percent: number | '' = ''
-          if (total > 0) {
+          let percent: number | '' | null = null
+          if (hasScore && total > 0 && score !== null) {
             percent = Math.round((score / total) * 100)
           }
 
           let level = ''
-          if (typeof percent === 'number') {
+          if (hasScore && typeof percent === 'number') {
             if (percent >= 90) level = 'I'
             else if (percent >= 80) level = 'II'
             else if (percent >= 70) level = 'III'
@@ -321,12 +330,12 @@ export async function GET(request: NextRequest) {
             else level = 'VIII'
           }
 
-          const row: (string | number)[] = [
+          const row: (string | number | null)[] = [
             index + 1,
             attempt.student_name || '',
             ...qScores,
-            score,
-            percent,
+            hasScore ? (score ?? '') : '',
+            hasScore && typeof percent === 'number' ? percent : '',
             level,
           ]
 
