@@ -5,6 +5,10 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { startExamSchema, submitExamSchema } from '@/lib/schemas'
 
 export async function startExam(formData: FormData) {
+  'use server'
+  
+  let errorMessage = ''
+  
   try {
     const rawData = {
       name: formData.get('name')?.toString() || '',
@@ -14,27 +18,42 @@ export async function startExam(formData: FormData) {
 
     // Validate input
     if (!rawData.name.trim()) {
-      throw new Error('Нэрээ оруулна уу')
+      errorMessage = 'Нэрээ оруулна уу'
+      throw new Error(errorMessage)
     }
 
     if (![10, 11, 12].includes(rawData.grade)) {
-      throw new Error('Зөв анги сонгоно уу (10, 11, эсвэл 12)')
+      errorMessage = 'Зөв анги сонгоно уу (10, 11, эсвэл 12)'
+      throw new Error(errorMessage)
     }
 
     if (!['A', 'B'].includes(rawData.variant)) {
-      throw new Error('Зөв хувилбар сонгоно уу (A эсвэл B)')
+      errorMessage = 'Зөв хувилбар сонгоно уу (A эсвэл B)'
+      throw new Error(errorMessage)
+    }
+
+    // Check environment variables first
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      errorMessage = 'Database тохиргоо дутуу байна: NEXT_PUBLIC_SUPABASE_URL байхгүй. Vercel дээр Environment Variables тохируулах хэрэгтэй.'
+      throw new Error(errorMessage)
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      errorMessage = 'Database тохиргоо дутуу байна: NEXT_PUBLIC_SUPABASE_ANON_KEY байхгүй. Vercel дээр Environment Variables тохируулах хэрэгтэй.'
+      throw new Error(errorMessage)
     }
 
     // Validate with Zod
-    const parsed = startExamSchema.parse({
-      name: rawData.name,
-      grade: rawData.grade as 10 | 11 | 12,
-      variant: rawData.variant as 'A' | 'B',
-    })
-
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      throw new Error('Database тохиргоо дутуу байна. Багшид мэдэгдэнэ үү.')
+    let parsed
+    try {
+      parsed = startExamSchema.parse({
+        name: rawData.name,
+        grade: rawData.grade as 10 | 11 | 12,
+        variant: rawData.variant as 'A' | 'B',
+      })
+    } catch (zodError: any) {
+      errorMessage = zodError.errors?.[0]?.message || 'Form validation алдаа'
+      throw new Error(errorMessage)
     }
 
     // Create attempt
@@ -53,36 +72,35 @@ export async function startExam(formData: FormData) {
       console.error('Supabase error:', error)
       
       // Provide more specific error messages
-      if (error.code === '42501' || error.message.includes('row-level security')) {
-        throw new Error('Database тохиргооны алдаа: RLS policy тохируулаагүй байна. Багшид мэдэгдэнэ үү.')
+      if (error.code === '42501' || error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+        errorMessage = 'Database алдаа: RLS policy тохируулаагүй байна. FIX_NOW.sql файлыг Supabase SQL Editor дээр ажиллуулах хэрэгтэй.'
+      } else if (error.message?.includes('does not exist') || error.message?.includes('relation')) {
+        errorMessage = 'Database алдаа: Table үүсээгүй байна. SUPABASE_SETUP.sql файлыг Supabase SQL Editor дээр ажиллуулах хэрэгтэй.'
+      } else {
+        errorMessage = `Database алдаа: ${error.message || error.code || 'Тодорхойгүй алдаа'}`
       }
-      
-      throw new Error(`Attempt үүсгэхэд алдаа: ${error.message}`)
+      throw new Error(errorMessage)
     }
 
     if (!data || !data.id) {
-      throw new Error('Attempt үүсгэхэд алдаа: Data буцаагүй')
+      errorMessage = 'Attempt үүсгэхэд алдаа: Data буцаагүй'
+      throw new Error(errorMessage)
     }
 
     redirect(`/exam/${data.id}`)
-  } catch (error) {
+  } catch (error: any) {
     console.error('startExam error:', error)
     
-    // Re-throw validation errors as-is
-    if (error instanceof Error && (
-      error.message.includes('Нэрээ') ||
-      error.message.includes('анги') ||
-      error.message.includes('хувилбар')
-    )) {
+    // If it's a redirect error, re-throw it
+    if (error && typeof error === 'object' && 'digest' in error && error.digest?.includes('NEXT_REDIRECT')) {
       throw error
     }
     
-    // Re-throw known errors
-    if (error instanceof Error) {
-      throw error
-    }
+    // Use our error message or the error's message
+    const finalMessage = errorMessage || (error instanceof Error ? error.message : 'Сорил эхлүүлэхэд алдаа гарлаа')
     
-    throw new Error('Сорил эхлүүлэхэд алдаа гарлаа. Дахин оролдоно уу.')
+    // Create a more descriptive error
+    throw new Error(finalMessage)
   }
 }
 

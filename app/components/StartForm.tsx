@@ -16,10 +16,13 @@ export default function StartForm() {
 
   const isLocked = !!(urlGrade || urlVariant)
 
+  const [error, setError] = useState<string | null>(null)
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!name.trim() || !grade || !variant) return
 
+    setError(null)
     setIsSubmitting(true)
     const formData = new FormData()
     formData.append('name', name.trim())
@@ -28,9 +31,11 @@ export default function StartForm() {
 
     try {
       await startExam(formData)
-    } catch (error) {
-      alert('Алдаа: ' + (error instanceof Error ? error.message : 'Тодорхойгүй алдаа'))
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Тодорхойгүй алдаа гарлаа'
+      setError(errorMessage)
       setIsSubmitting(false)
+      console.error('Submit error:', err)
     }
   }
 
@@ -41,6 +46,12 @@ export default function StartForm() {
       {isLocked && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
           Анги/Хувилбар урьдчилан тохируулагдсан.
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+          <strong>Алдаа:</strong> {error}
         </div>
       )}
 
