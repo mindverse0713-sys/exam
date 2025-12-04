@@ -138,10 +138,9 @@ export async function GET(request: NextRequest) {
             const keyStr = String(q)
             const correctIndex = answerKey.matchKey?.[keyStr]
             const studentRaw = answersMatch?.[keyStr]
-            const studentIndex =
-              typeof studentRaw === 'number'
-                ? studentRaw
-                : parseInt(studentRaw?.toString() || '0', 10)
+            // answersMatch утгуудыг тоо гэж үзнэ (1–8 индекс).
+            // TypeScript-д 'never' алдаа гарахаас сэргийлж, нэмэлт parse хийхгүй.
+            const studentIndex = typeof studentRaw === 'number' ? studentRaw : 0
 
             if (correctIndex != null && !Number.isNaN(studentIndex) && studentIndex > 0) {
               qScores.push(studentIndex === correctIndex ? 1 : 0)
