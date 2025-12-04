@@ -12,41 +12,77 @@ export async function startExam(formData: FormData) {
       variant: formData.get('variant')?.toString() || '',
     }
 
-    // Validate
+    // Validate input
+    if (!rawData.name.trim()) {
+      throw new Error('Нэрээ оруулна уу')
+    }
+
+    if (![10, 11, 12].includes(rawData.grade)) {
+      throw new Error('Зөв анги сонгоно уу (10, 11, эсвэл 12)')
+    }
+
+    if (!['A', 'B'].includes(rawData.variant)) {
+      throw new Error('Зөв хувилбар сонгоно уу (A эсвэл B)')
+    }
+
+    // Validate with Zod
     const parsed = startExamSchema.parse({
       name: rawData.name,
       grade: rawData.grade as 10 | 11 | 12,
       variant: rawData.variant as 'A' | 'B',
     })
 
-  // Create attempt
-  const { data, error } = await supabase
-    .from('attempts')
-    .insert({
-      student_name: parsed.name,
-      grade: parsed.grade,
-      variant: parsed.variant,
-      started_at: new Date().toISOString(),
-    })
-    .select('id')
-    .single()
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      throw new Error('Database тохиргоо дутуу байна. Багшид мэдэгдэнэ үү.')
+    }
 
-  if (error) {
-    console.error('Supabase error:', error)
-    throw new Error(`Attempt үүсгэхэд алдаа гарлаа: ${error.message}`)
-  }
+    // Create attempt
+    const { data, error } = await supabase
+      .from('attempts')
+      .insert({
+        student_name: parsed.name,
+        grade: parsed.grade,
+        variant: parsed.variant,
+        started_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single()
 
-    if (!data) {
-      throw new Error('Attempt үүсгэхэд алдаа гарлаа: Data буцаагүй')
+    if (error) {
+      console.error('Supabase error:', error)
+      
+      // Provide more specific error messages
+      if (error.code === '42501' || error.message.includes('row-level security')) {
+        throw new Error('Database тохиргооны алдаа: RLS policy тохируулаагүй байна. Багшид мэдэгдэнэ үү.')
+      }
+      
+      throw new Error(`Attempt үүсгэхэд алдаа: ${error.message}`)
+    }
+
+    if (!data || !data.id) {
+      throw new Error('Attempt үүсгэхэд алдаа: Data буцаагүй')
     }
 
     redirect(`/exam/${data.id}`)
   } catch (error) {
     console.error('startExam error:', error)
+    
+    // Re-throw validation errors as-is
+    if (error instanceof Error && (
+      error.message.includes('Нэрээ') ||
+      error.message.includes('анги') ||
+      error.message.includes('хувилбар')
+    )) {
+      throw error
+    }
+    
+    // Re-throw known errors
     if (error instanceof Error) {
       throw error
     }
-    throw new Error('Сорил эхлүүлэхэд алдаа гарлаа')
+    
+    throw new Error('Сорил эхлүүлэхэд алдаа гарлаа. Дахин оролдоно уу.')
   }
 }
 
