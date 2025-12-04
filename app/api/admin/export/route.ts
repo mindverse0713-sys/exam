@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
           }
 
           let level = ''
-          if (hasScore && typeof percent === 'number') {
+          if (typeof percent === 'number') {
             if (percent >= 90) level = 'I'
             else if (percent >= 80) level = 'II'
             else if (percent >= 70) level = 'III'
@@ -238,9 +238,9 @@ export async function GET(request: NextRequest) {
 
           worksheet[cellNumber].v = index + 1
           worksheet[cellName].v = attempt.student_name || ''
-          // Сурагч алга бол хоосон байх
-          worksheet[cellScore].v = hasScore ? (score ?? '') : ''
-          worksheet[cellPercent].v = hasScore && typeof percent === 'number' ? percent : ''
+          // Сорил бөглөсөн бол дүн харуулах, алга бол хоосон
+          worksheet[cellScore].v = finalScore !== null ? finalScore : ''
+          worksheet[cellPercent].v = typeof percent === 'number' ? percent : ''
           worksheet[cellLevel].v = level
 
           // Асуултын баганууд (1-20)
@@ -304,22 +304,28 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Сурагч алга бол (score null/undefined) дүн хоосон байх
+          // Сурагч сорил бөглөсөн эсэхийг шалгах (submitted_at байвал бөглөсөн)
+          const hasSubmitted = attempt.submitted_at !== null && attempt.submitted_at !== undefined
+          // Score байгаа эсэх
           const hasScore = attempt.score !== null && attempt.score !== undefined
           
+          // Сорил бөглөсөн бол дүн тооцох, эсвэл score байвал ашиглах
           const score = hasScore
             ? (typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0))
+            : hasSubmitted
+            ? qScores.reduce((a, b) => a + b, 0) // Бөглөсөн ч score null байвал тооцох
             : null
           const total =
             typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
 
           let percent: number | '' | null = null
-          if (hasScore && total > 0 && score !== null) {
-            percent = Math.round((score / total) * 100)
+          const finalScore = score !== null ? score : (hasSubmitted ? qScores.reduce((a, b) => a + b, 0) : null)
+          if (finalScore !== null && total > 0) {
+            percent = Math.round((finalScore / total) * 100)
           }
 
           let level = ''
-          if (hasScore && typeof percent === 'number') {
+          if (typeof percent === 'number') {
             if (percent >= 90) level = 'I'
             else if (percent >= 80) level = 'II'
             else if (percent >= 70) level = 'III'
@@ -334,8 +340,8 @@ export async function GET(request: NextRequest) {
             index + 1,
             attempt.student_name || '',
             ...qScores,
-            hasScore ? (score ?? '') : '',
-            hasScore && typeof percent === 'number' ? percent : '',
+            finalScore !== null ? finalScore : '',
+            typeof percent === 'number' ? percent : '',
             level,
           ]
 
