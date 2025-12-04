@@ -330,7 +330,7 @@ export async function GET(request: NextRequest) {
             else level = 'VIII'
           }
 
-          const row: (string | number | null)[] = [
+          const row: (string | number)[] = [
             index + 1,
             attempt.student_name || '',
             ...qScores,
