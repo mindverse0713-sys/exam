@@ -5,8 +5,6 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { startExamSchema, submitExamSchema } from '@/lib/schemas'
 
 export async function startExam(formData: FormData) {
-  'use server'
-  
   let errorMessage = ''
   
   try {
@@ -105,101 +103,184 @@ export async function startExam(formData: FormData) {
 }
 
 export async function submitExam(formData: FormData) {
-  const attemptId = formData.get('attemptId')?.toString()
-  const answersMcqJson = formData.get('answersMcq')?.toString()
-  const answersMatchJson = formData.get('answersMatch')?.toString()
-  const clientStartedAt = formData.get('clientStartedAt')?.toString()
+  let errorMessage = ''
+  
+  try {
+    const attemptId = formData.get('attemptId')?.toString()
+    const answersMcqJson = formData.get('answersMcq')?.toString()
+    const answersMatchJson = formData.get('answersMatch')?.toString()
+    const clientStartedAt = formData.get('clientStartedAt')?.toString()
 
-  if (!attemptId || !answersMcqJson || !answersMatchJson) {
-    throw new Error('Мэдээлэл дутуу байна')
-  }
-
-  const answersMcq = JSON.parse(answersMcqJson)
-  const answersMatch = JSON.parse(answersMatchJson)
-  const startedAtMs = clientStartedAt ? parseInt(clientStartedAt) : null
-
-  // Validate
-  const parsed = submitExamSchema.parse({
-    attemptId,
-    answersMcq,
-    answersMatch,
-    clientStartedAt: startedAtMs,
-  })
-
-  // Get attempt to find grade/variant
-  const { data: attempt, error: attemptError } = await supabaseAdmin
-    .from('attempts')
-    .select('grade, variant, started_at')
-    .eq('id', attemptId)
-    .single()
-
-  if (attemptError || !attempt) {
-    throw new Error('Attempt олдсонгүй')
-  }
-
-  // Get exam answer key (server-side only)
-  const { data: exam, error: examError } = await supabaseAdmin
-    .from('exams')
-    .select('answer_key')
-    .eq('grade', attempt.grade)
-    .eq('variant', attempt.variant)
-    .eq('active', true)
-    .single()
-
-  if (examError || !exam) {
-    throw new Error('Сорил олдсонгүй')
-  }
-
-  const answerKey = exam.answer_key as {
-    mcqKey: Record<string, string>
-    matchKey: Record<string, number>
-  }
-
-  // Grade MCQ (12 questions)
-  let mcqScore = 0
-  for (const [qNum, correctAnswer] of Object.entries(answerKey.mcqKey)) {
-    if (answersMcq[qNum] === correctAnswer) {
-      mcqScore++
+    if (!attemptId || !answersMcqJson || !answersMatchJson) {
+      errorMessage = 'Мэдээлэл дутуу байна'
+      throw new Error(errorMessage)
     }
-  }
 
-  // Grade Matching (8 questions)
-  let matchScore = 0
-  for (const [qNum, correctIndex] of Object.entries(answerKey.matchKey)) {
-    const studentAnswer = parseInt(answersMatch[qNum]?.toString() || '0')
-    if (studentAnswer === correctIndex) {
-      matchScore++
+    let answersMcq: any
+    let answersMatch: any
+    
+    try {
+      answersMcq = JSON.parse(answersMcqJson)
+      answersMatch = JSON.parse(answersMatchJson)
+    } catch (parseError) {
+      errorMessage = 'Хариултын формат буруу байна'
+      throw new Error(errorMessage)
     }
+
+    const startedAtMs = clientStartedAt ? parseInt(clientStartedAt) : null
+
+    // Check environment variables
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      errorMessage = 'Database тохиргоо дутуу байна: SUPABASE_SERVICE_ROLE_KEY байхгүй. Vercel дээр Environment Variables тохируулах хэрэгтэй.'
+      throw new Error(errorMessage)
+    }
+
+    // Validate
+    let parsed
+    try {
+      parsed = submitExamSchema.parse({
+        attemptId,
+        answersMcq,
+        answersMatch,
+        clientStartedAt: startedAtMs,
+      })
+    } catch (zodError: any) {
+      errorMessage = zodError.errors?.[0]?.message || 'Form validation алдаа'
+      throw new Error(errorMessage)
+    }
+
+    // Get attempt to find grade/variant
+    const { data: attempt, error: attemptError } = await supabaseAdmin
+      .from('attempts')
+      .select('grade, variant, started_at')
+      .eq('id', attemptId)
+      .single()
+
+    if (attemptError) {
+      console.error('Supabase attempt error:', attemptError)
+      if (attemptError.message?.includes('does not exist') || attemptError.message?.includes('relation')) {
+        errorMessage = 'Database алдаа: Table үүсээгүй байна. SUPABASE_SETUP.sql файлыг Supabase SQL Editor дээр ажиллуулах хэрэгтэй.'
+      } else {
+        errorMessage = `Attempt олох алдаа: ${attemptError.message || attemptError.code || 'Тодорхойгүй алдаа'}`
+      }
+      throw new Error(errorMessage)
+    }
+
+    if (!attempt) {
+      errorMessage = 'Attempt олдсонгүй'
+      throw new Error(errorMessage)
+    }
+
+    // Get exam answer key (server-side only)
+    const { data: exam, error: examError } = await supabaseAdmin
+      .from('exams')
+      .select('answer_key')
+      .eq('grade', attempt.grade)
+      .eq('variant', attempt.variant)
+      .eq('active', true)
+      .single()
+
+    if (examError) {
+      console.error('Supabase exam error:', examError)
+      if (examError.message?.includes('does not exist') || examError.message?.includes('relation')) {
+        errorMessage = 'Database алдаа: Table үүсээгүй байна. SUPABASE_SETUP.sql файлыг Supabase SQL Editor дээр ажиллуулах хэрэгтэй.'
+      } else {
+        errorMessage = `Сорил олох алдаа: ${examError.message || examError.code || 'Тодорхойгүй алдаа'}`
+      }
+      throw new Error(errorMessage)
+    }
+
+    if (!exam) {
+      errorMessage = 'Сорил олдсонгүй'
+      throw new Error(errorMessage)
+    }
+
+    const answerKey = exam.answer_key as {
+      mcqKey: Record<string, string>
+      matchKey: Record<string, number>
+    }
+
+    // Grade MCQ (12 questions)
+    let mcqScore = 0
+    for (const [qNum, correctAnswer] of Object.entries(answerKey.mcqKey)) {
+      if (answersMcq[qNum] === correctAnswer) {
+        mcqScore++
+      }
+    }
+
+    // Grade Matching (8 questions)
+    let matchScore = 0
+    for (const [qNum, correctIndex] of Object.entries(answerKey.matchKey)) {
+      const studentAnswer = parseInt(answersMatch[qNum]?.toString() || '0')
+      if (studentAnswer === correctIndex) {
+        matchScore++
+      }
+    }
+
+    const totalScore = mcqScore + matchScore
+    const submittedAt = new Date()
+
+    // Calculate duration
+    let durationSec: number | null = null
+    if (startedAtMs) {
+      durationSec = Math.floor((submittedAt.getTime() - startedAtMs) / 1000)
+    } else if (attempt.started_at) {
+      const started = new Date(attempt.started_at)
+      durationSec = Math.floor((submittedAt.getTime() - started.getTime()) / 1000)
+    }
+
+    // Update attempt (using admin client)
+    const { error: updateError } = await supabaseAdmin
+      .from('attempts')
+      .update({
+        submitted_at: submittedAt.toISOString(),
+        duration_sec: durationSec,
+        score: totalScore,
+        answers_mcq: answersMcq,
+        answers_match: answersMatch,
+      })
+      .eq('id', attemptId)
+
+    if (updateError) {
+      console.error('Supabase update error:', updateError)
+      if (updateError.message?.includes('does not exist') || updateError.message?.includes('relation')) {
+        errorMessage = 'Database алдаа: Table үүсээгүй байна. SUPABASE_SETUP.sql файлыг Supabase SQL Editor дээр ажиллуулах хэрэгтэй.'
+      } else {
+        errorMessage = `Хариулт хадгалах алдаа: ${updateError.message || updateError.code || 'Тодорхойгүй алдаа'}`
+      }
+      throw new Error(errorMessage)
+    }
+
+    redirect('/thanks')
+  } catch (error: any) {
+    console.error('submitExam error:', error)
+    
+    // If it's a redirect error, re-throw it (don't catch redirects)
+    if (error && typeof error === 'object' && 'digest' in error && 
+        (error.digest?.includes('NEXT_REDIRECT') || error.message?.includes('NEXT_REDIRECT'))) {
+      throw error
+    }
+    
+    // Use our error message or the error's message
+    let finalMessage = errorMessage
+    
+    if (!finalMessage && error instanceof Error) {
+      finalMessage = error.message
+    }
+    
+    if (!finalMessage) {
+      finalMessage = 'Хариулт илгээхэд алдаа гарлаа. Дахин оролдоно уу.'
+    }
+    
+    // Create error with proper message
+    const finalError = new Error(finalMessage)
+    
+    // Preserve error details for debugging
+    if (error?.digest) {
+      (finalError as any).digest = error.digest
+    }
+    
+    throw finalError
   }
-
-  const totalScore = mcqScore + matchScore
-  const submittedAt = new Date()
-
-  // Calculate duration
-  let durationSec: number | null = null
-  if (startedAtMs) {
-    durationSec = Math.floor((submittedAt.getTime() - startedAtMs) / 1000)
-  } else if (attempt.started_at) {
-    const started = new Date(attempt.started_at)
-    durationSec = Math.floor((submittedAt.getTime() - started.getTime()) / 1000)
-  }
-
-  // Update attempt (using admin client)
-  const { error: updateError } = await supabaseAdmin
-    .from('attempts')
-    .update({
-      submitted_at: submittedAt.toISOString(),
-      duration_sec: durationSec,
-      score: totalScore,
-      answers_mcq: answersMcq,
-      answers_match: answersMatch,
-    })
-    .eq('id', attemptId)
-
-  if (updateError) {
-    throw new Error('Хариулт хадгалахад алдаа гарлаа')
-  }
-
-  redirect('/thanks')
 }
 
