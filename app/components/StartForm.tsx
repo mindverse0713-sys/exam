@@ -32,7 +32,18 @@ export default function StartForm() {
     try {
       await startExam(formData)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Тодорхойгүй алдаа гарлаа'
+      let errorMessage =
+        err instanceof Error ? err.message : 'Тодорхойгүй алдаа гарлаа'
+
+      // Production generic message-ийг илүү ойлгомжтой болгох
+      if (
+        errorMessage.includes('Server Components render error') ||
+        errorMessage.includes('Server Components render')
+      ) {
+        errorMessage =
+          'Сервер дээр алдаа гарлаа. Магадгүй Vercel дээр Environment Variables эсвэл Supabase тохиргоо буруу байна. Багшид мэдээлнэ үү.'
+      }
+
       setError(errorMessage)
       setIsSubmitting(false)
       console.error('Submit error:', err)
