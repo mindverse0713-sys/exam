@@ -51,55 +51,138 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Өгөгдөл олдсонгүй' }, { status: 404 })
     }
 
-    // Group by grade
-    const byGrade: Record<number, typeof attempts> = {}
-    for (const attempt of attempts) {
+    // ==== ANALYSIS-STYLE EXCEL (\"анализ хийх хүснэгт\" загвар) ====
+    // Нэг sheet = нэг анги. Багана:
+    // A: Сурагчийн нэр
+    // B–AY: 1–50 (асуулт тус бүрийн оноо: 1 = зөв, 0 = буруу, хоосон = байхгүй)
+    // AZ: Авсан (нийт оноо)
+    // BA: Дүн (%) – ойролцоо хувь
+
+    type AttemptRow = typeof attempts[0]
+
+    // 1. Grade-ээр бүлэглэх
+    const byGrade: Record<number, AttemptRow[]> = {}
+    for (const attempt of attempts as AttemptRow[]) {
       if (!byGrade[attempt.grade]) {
         byGrade[attempt.grade] = []
       }
       byGrade[attempt.grade].push(attempt)
     }
 
-    // Create workbook
-    const workbook = XLSX.utils.book_new()
-
-    // Create sheet for each grade
-    for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
-      const rows = gradeAttempts.map((attempt: typeof attempts[0]) => ({
-        'Оюутан': attempt.student_name,
-        'Анги': attempt.grade,
-        'Хувилбар': attempt.variant,
-        'Эхэлсэн': attempt.started_at ? new Date(attempt.started_at).toLocaleString('mn-MN') : '',
-        'Дууссан': attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString('mn-MN') : '',
-        'Хугацаа (сек)': attempt.duration_sec || '',
-        'Оноо': attempt.score ?? '',
-        'Нийт': attempt.total || 20,
-      }))
-
-      const worksheet = XLSX.utils.json_to_sheet(rows)
-      XLSX.utils.book_append_sheet(workbook, worksheet, `${gradeStr}-р анги`)
+    // 2. Grade+Variant бүрээр answer_key татах (асуулт бүрийн зөв хариу)
+    type AnswerKey = {
+      mcqKey: Record<string, string>
+      matchKey: Record<string, number>
     }
 
-    // If variant filter is specific, also create variant-specific sheet
-    if (variantParam && variantParam !== 'all' && gradeParam && gradeParam !== 'all') {
-      const variantAttempts = attempts.filter(
-        (a: typeof attempts[0]) => a.grade === parseInt(gradeParam) && a.variant === variantParam
-      )
-      if (variantAttempts.length > 0) {
-        const rows = variantAttempts.map((attempt: typeof attempts[0]) => ({
-          'Оюутан': attempt.student_name,
-          'Анги': attempt.grade,
-          'Хувилбар': attempt.variant,
-          'Эхэлсэн': attempt.started_at ? new Date(attempt.started_at).toLocaleString('mn-MN') : '',
-          'Дууссан': attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString('mn-MN') : '',
-          'Хугацаа (сек)': attempt.duration_sec || '',
-          'Оноо': attempt.score ?? '',
-          'Нийт': attempt.total || 20,
-        }))
+    const examKeyMap = new Map<string, AnswerKey>()
+    const combos = new Set<string>()
 
-        const worksheet = XLSX.utils.json_to_sheet(rows)
-        XLSX.utils.book_append_sheet(workbook, worksheet, `Хувилбар ${variantParam}`)
+    for (const attempt of attempts as AttemptRow[]) {
+      combos.add(`${attempt.grade}-${attempt.variant}`)
+    }
+
+    for (const key of combos) {
+      const [gradeStrKey, variantKey] = key.split('-')
+      const gradeKey = parseInt(gradeStrKey, 10)
+
+      const { data: exam, error: examError } = await supabaseAdmin
+        .from('exams')
+        .select('answer_key')
+        .eq('grade', gradeKey)
+        .eq('variant', variantKey)
+        .eq('active', true)
+        .single()
+
+      if (!examError && exam?.answer_key) {
+        examKeyMap.set(key, exam.answer_key as AnswerKey)
       }
+    }
+
+    // 3. Workbook үүсгэх
+    const workbook = XLSX.utils.book_new()
+
+    // 4. Нэг ангид нэг sheet
+    for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
+      const header: (string | number)[] = ['Сурагчийн нэр']
+      for (let i = 1; i <= 50; i++) {
+        header.push(i)
+      }
+      header.push('Авсан', 'Дүн (%)')
+
+      const dataRows: (string | number)[][] = []
+
+      for (const attempt of gradeAttempts as AttemptRow[]) {
+        const comboKey = `${attempt.grade}-${attempt.variant}`
+        const answerKey = examKeyMap.get(comboKey)
+
+        const qScores: number[] = []
+
+        if (answerKey) {
+          // MCQ (1–12)
+          const answersMcq = (attempt.answers_mcq || {}) as Record<string, string>
+          for (let q = 1; q <= 12; q++) {
+            const keyStr = String(q)
+            const correct = answerKey.mcqKey?.[keyStr]
+            const student = answersMcq?.[keyStr]
+            if (correct && student) {
+              qScores.push(student === correct ? 1 : 0)
+            } else {
+              qScores.push(0)
+            }
+          }
+
+          // Matching (13–20) – индексийг 1–8 гэж үзээд +12 шилжүүлнэ
+          const answersMatch = (attempt.answers_match || {}) as Record<string, number>
+          for (let q = 1; q <= 8; q++) {
+            const keyStr = String(q)
+            const correctIndex = answerKey.matchKey?.[keyStr]
+            const studentRaw = answersMatch?.[keyStr]
+            const studentIndex =
+              typeof studentRaw === 'number'
+                ? studentRaw
+                : parseInt(studentRaw?.toString() || '0', 10)
+
+            if (correctIndex != null && !Number.isNaN(studentIndex) && studentIndex > 0) {
+              qScores.push(studentIndex === correctIndex ? 1 : 0)
+            } else {
+              qScores.push(0)
+            }
+          }
+        } else {
+          // Хэрэв answer_key олдоогүй бол эхний 20-г 0-ээр дүүргэнэ
+          for (let q = 1; q <= 20; q++) {
+            qScores.push(0)
+          }
+        }
+
+        // нийт 50 багана – эхний 20-д бодит, үлдсэнд хоосон
+        const qColumns: (number | string)[] = []
+        for (let i = 0; i < 50; i++) {
+          if (i < qScores.length) {
+            qColumns.push(qScores[i])
+          } else {
+            qColumns.push('')
+          }
+        }
+
+        const score = typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0)
+        const total =
+          typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
+        const percent = total > 0 ? Math.round((score / total) * 100) : ''
+
+        const row: (string | number)[] = [
+          attempt.student_name || '',
+          ...qColumns,
+          score,
+          percent,
+        ]
+
+        dataRows.push(row)
+      }
+
+      const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows])
+      XLSX.utils.book_append_sheet(workbook, worksheet, `${gradeStr}-р анги`)
     }
 
     // Generate buffer
