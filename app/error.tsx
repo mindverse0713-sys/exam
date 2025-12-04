@@ -21,13 +21,37 @@ export default function Error({
 
   // Extract meaningful error message
   const getErrorMessage = () => {
-    if (error.message) {
+    // Check for generic production error message
+    if (error.message && error.message.includes('Server Components render error')) {
+      return 'Сервер дээр алдаа гарлаа. Магадгүй Database тохиргоо дутуу байж магадгүй. Vercel дээр Environment Variables шалгана уу (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).'
+    }
+    
+    // Check for environment variable errors
+    if (error.message && (
+      error.message.includes('NEXT_PUBLIC_SUPABASE_URL') ||
+      error.message.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
+      error.message.includes('SUPABASE_SERVICE_ROLE_KEY') ||
+      error.message.includes('environment variable is missing')
+    )) {
+      return error.message
+    }
+    
+    // Check for database errors
+    if (error.message && (
+      error.message.includes('Database тохиргоо') ||
+      error.message.includes('Table үүсээгүй') ||
+      error.message.includes('RLS policy')
+    )) {
+      return error.message
+    }
+    
+    if (error.message && error.message !== 'An error occurred in the Server Components render.') {
       return error.message
     }
     
     // Check for common production errors
     if (error.digest) {
-      return 'Сервер дээр алдаа гарлаа. Дахин оролдоно уу.'
+      return 'Сервер дээр алдаа гарлаа. Дахин оролдоно уу. Хэрэв алдаа давтагдах бол Vercel дээр Environment Variables шалгана уу.'
     }
     
     return 'Тодорхойгүй алдаа гарлаа. Дахин оролдоно уу.'

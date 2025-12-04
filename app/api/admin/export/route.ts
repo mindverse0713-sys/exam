@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
     const workbook = XLSX.utils.book_new()
 
     // Create sheet for each grade
-    for (const [grade, gradeAttempts] of Object.entries(byGrade)) {
-      const rows = gradeAttempts.map((attempt) => ({
+    for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
+      const rows = gradeAttempts.map((attempt: typeof attempts[0]) => ({
         'Оюутан': attempt.student_name,
         'Анги': attempt.grade,
         'Хувилбар': attempt.variant,
@@ -77,16 +77,16 @@ export async function GET(request: NextRequest) {
       }))
 
       const worksheet = XLSX.utils.json_to_sheet(rows)
-      XLSX.utils.book_append_sheet(workbook, worksheet, `${grade}-р анги`)
+      XLSX.utils.book_append_sheet(workbook, worksheet, `${gradeStr}-р анги`)
     }
 
     // If variant filter is specific, also create variant-specific sheet
     if (variantParam && variantParam !== 'all' && gradeParam && gradeParam !== 'all') {
       const variantAttempts = attempts.filter(
-        (a) => a.grade === parseInt(gradeParam) && a.variant === variantParam
+        (a: typeof attempts[0]) => a.grade === parseInt(gradeParam) && a.variant === variantParam
       )
       if (variantAttempts.length > 0) {
-        const rows = variantAttempts.map((attempt) => ({
+        const rows = variantAttempts.map((attempt: typeof attempts[0]) => ({
           'Оюутан': attempt.student_name,
           'Анги': attempt.grade,
           'Хувилбар': attempt.variant,
