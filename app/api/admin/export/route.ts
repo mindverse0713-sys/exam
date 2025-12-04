@@ -102,17 +102,23 @@ export async function GET(request: NextRequest) {
     // 3. Workbook үүсгэх
     const workbook = XLSX.utils.book_new()
 
-    // 4. Нэг ангид нэг sheet
+    // 4. Нэг ангид нэг sheet (\"анализ хийх хүснэгт\" загвар)
+    // A: №
+    // B: Сурагчийн нэр
+    // C–V: 1–20 (асуулт тус бүрийн оноо: 1 = зөв, 0 = буруу)
+    // W: Авсан (нийт оноо)
+    // X: Дүн (%) – ойролцоо хувь
+    // Y: Түвшин (I–VIII гэх мэт, хувиас тооцсон)
     for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
-      const header: (string | number)[] = ['Сурагчийн нэр']
-      for (let i = 1; i <= 50; i++) {
+      const header: (string | number)[] = ['№', 'Сурагчийн нэр']
+      for (let i = 1; i <= 20; i++) {
         header.push(i)
       }
-      header.push('Авсан', 'Дүн (%)')
+      header.push('Авсан', 'Дүн (%)', 'Түвшин')
 
       const dataRows: (string | number)[][] = []
 
-      for (const attempt of gradeAttempts as AttemptRow[]) {
+      ;(gradeAttempts as AttemptRow[]).forEach((attempt, index) => {
         const comboKey = `${attempt.grade}-${attempt.variant}`
         const answerKey = examKeyMap.get(comboKey)
 
@@ -155,9 +161,9 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // нийт 50 багана – эхний 20-д бодит, үлдсэнд хоосон
+        // нийт 20 багана – 20 асуултын оноо
         const qColumns: (number | string)[] = []
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 20; i++) {
           if (i < qScores.length) {
             qColumns.push(qScores[i])
           } else {
@@ -165,20 +171,40 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        const score = typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0)
+        const score =
+          typeof attempt.score === 'number' ? attempt.score : qScores.reduce((a, b) => a + b, 0)
         const total =
           typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : qScores.length || 20
-        const percent = total > 0 ? Math.round((score / total) * 100) : ''
+
+        let percent: number | '' = ''
+        if (total > 0) {
+          percent = Math.round((score / total) * 100)
+        }
+
+        // Түвшин (ойролцоогоор I–VIII)
+        let level = ''
+        if (typeof percent === 'number') {
+          if (percent >= 90) level = 'I'
+          else if (percent >= 80) level = 'II'
+          else if (percent >= 70) level = 'III'
+          else if (percent >= 60) level = 'IV'
+          else if (percent >= 50) level = 'V'
+          else if (percent >= 40) level = 'VI'
+          else if (percent >= 30) level = 'VII'
+          else level = 'VIII'
+        }
 
         const row: (string | number)[] = [
+          index + 1, // №
           attempt.student_name || '',
           ...qColumns,
           score,
           percent,
+          level,
         ]
 
         dataRows.push(row)
-      }
+      })
 
       const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows])
       XLSX.utils.book_append_sheet(workbook, worksheet, `${gradeStr}-р анги`)
