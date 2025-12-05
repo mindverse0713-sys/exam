@@ -109,6 +109,60 @@ export default function ExamsEditorPage() {
     }
   }, [selectedGrade, selectedVariant, exams, isAuthenticated])
 
+  // Create new exam
+  const handleCreateExam = async () => {
+    if (currentExam) {
+      alert('Одоо ажиллаж байгаа сорилыг эхлээд хадгална уу')
+      return
+    }
+
+    const confirmed = confirm(
+      `${selectedGrade}-р анги, Хувилбар ${selectedVariant} шинэ сорил үүсгэх үү?`
+    )
+    if (!confirmed) return
+
+    setSaving(true)
+    try {
+      // Create empty exam template
+      const newExam = {
+        grade: selectedGrade,
+        variant: selectedVariant,
+        public_sections: {
+          mcq: Array(12).fill(null).map(() => ({
+            q: '',
+            options: { A: '', B: '', C: '', D: '' }
+          })),
+          matching: {
+            left: Array(8).fill(''),
+            right: Array(8).fill('')
+          }
+        },
+        answer_key: {
+          mcqKey: Object.fromEntries(Array(12).fill(0).map((_, i) => [String(i + 1), 'A'])),
+          matchKey: Object.fromEntries(Array(8).fill(0).map((_, i) => [String(i + 1), 1]))
+        }
+      }
+
+      const res = await fetch(`/api/admin/exams?pass=${password}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newExam)
+      })
+
+      if (res.ok) {
+        alert('Шинэ сорил үүсгэгдлээ!')
+        loadExams()
+      } else {
+        const data = await res.json()
+        alert(`Алдаа: ${data.error}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Алдаа гарлаа')
+    }
+    setSaving(false)
+  }
+
   // Save exam
   const handleSave = async () => {
     if (!currentExam) {
@@ -230,7 +284,14 @@ export default function ExamsEditorPage() {
                 <option value="B">B</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
+              <button
+                onClick={handleCreateExam}
+                disabled={loading || currentExam !== null}
+                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                ➕ Шинэ сорил
+              </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !currentExam}
