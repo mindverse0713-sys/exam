@@ -440,25 +440,25 @@ export default function ExamsEditorPage() {
 
             {/* Matching Questions */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Харгалзуулах (13-20)</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Зүүн тал (асуултууд) ↔ Баруун тал (хариултууд)
+              <h2 className="text-xl font-bold mb-4">Харгалзуулах (Асуулт 13-20)</h2>
+              <p className="text-sm text-blue-600 mb-4">
+                💡 Зүүн тал - Асуултууд (1-8) | Баруун тал - Хариултууд (A-H) | Зөв хариултыг доорхи dropdown-оос сонгоно
               </p>
               
               <div className="grid grid-cols-2 gap-6">
                 {/* Left side */}
-                <div>
-                  <h3 className="font-semibold mb-3">Зүүн тал (13-20):</h3>
-                  <div className="space-y-2">
+                <div className="bg-blue-50 p-4 rounded">
+                  <h3 className="font-semibold mb-3 text-blue-900">📝 Зүүн тал - Асуултууд:</h3>
+                  <div className="space-y-3">
                     {currentExam?.public_sections?.matching?.left?.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{index + 13}.</span>
-                        <input
-                          type="text"
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="font-bold text-blue-700 mt-1 text-sm w-6">{index + 1}.</span>
+                        <textarea
                           value={item}
                           onChange={(e) => updateMatchingLeft(index, e.target.value)}
-                          className="flex-1 px-2 py-1 border rounded text-sm"
-                          placeholder={`Асуулт ${index + 13}`}
+                          className="flex-1 px-3 py-2 border-2 border-blue-200 rounded focus:border-blue-500 text-sm"
+                          placeholder={`Асуулт ${index + 1} (Шалгалтад ${index + 13}-р асуулт)`}
+                          rows={2}
                         />
                       </div>
                     ))}
@@ -466,18 +466,18 @@ export default function ExamsEditorPage() {
                 </div>
 
                 {/* Right side */}
-                <div>
-                  <h3 className="font-semibold mb-3">Баруун тал (A-H):</h3>
-                  <div className="space-y-2">
+                <div className="bg-green-50 p-4 rounded">
+                  <h3 className="font-semibold mb-3 text-green-900">✅ Баруун тал - Хариултууд:</h3>
+                  <div className="space-y-3">
                     {currentExam?.public_sections?.matching?.right?.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{String.fromCharCode(65 + index)}.</span>
-                        <input
-                          type="text"
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="font-bold text-green-700 mt-1 text-sm w-6">{String.fromCharCode(65 + index)}.</span>
+                        <textarea
                           value={item}
                           onChange={(e) => updateMatchingRight(index, e.target.value)}
-                          className="flex-1 px-2 py-1 border rounded text-sm"
+                          className="flex-1 px-3 py-2 border-2 border-green-200 rounded focus:border-green-500 text-sm"
                           placeholder={`Хариулт ${String.fromCharCode(65 + index)}`}
+                          rows={2}
                         />
                       </div>
                     ))}
@@ -486,16 +486,17 @@ export default function ExamsEditorPage() {
               </div>
 
               {/* Answer keys for matching */}
-              <div className="mt-6">
-                <h3 className="font-semibold mb-3">Зөв хариултууд:</h3>
-                <div className="grid grid-cols-4 gap-3">
+              <div className="mt-6 bg-yellow-50 p-4 rounded">
+                <h3 className="font-semibold mb-3 text-yellow-900">🎯 Зөв харгалзуулалт:</h3>
+                <div className="grid grid-cols-4 gap-4">
                   {Array(8).fill(0).map((_, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{index + 13} →</span>
+                    <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border-2 border-yellow-200">
+                      <span className="text-sm font-bold text-blue-700">{index + 1}</span>
+                      <span className="text-gray-400">→</span>
                       <select
                         value={currentExam?.answer_key?.matchKey?.[String(index + 1)] || 1}
                         onChange={(e) => updateMatchingAnswerKey(index + 1, parseInt(e.target.value))}
-                        className="px-2 py-1 border rounded bg-green-50 text-sm"
+                        className="flex-1 px-2 py-1 border-2 border-yellow-300 rounded bg-yellow-50 text-sm font-bold text-green-700 focus:border-yellow-500"
                       >
                         {Array(8).fill(0).map((_, i) => (
                           <option key={i} value={i + 1}>
@@ -506,6 +507,9 @@ export default function ExamsEditorPage() {
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-gray-600 mt-3">
+                  Жишээ: "1 → A" гэдэг нь зүүн талын асуулт 1 (шалгалтад 13) → баруун талын хариулт A
+                </p>
               </div>
             </div>
           </div>
