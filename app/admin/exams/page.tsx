@@ -244,6 +244,46 @@ export default function ExamsEditorPage() {
     })
   }
 
+  // Update matching left item
+  const updateMatchingLeft = (index: number, value: string) => {
+    if (!currentExam) return
+    const newLeft = [...currentExam.public_sections.matching.left]
+    newLeft[index] = value
+    setCurrentExam({
+      ...currentExam,
+      public_sections: {
+        ...currentExam.public_sections,
+        matching: { ...currentExam.public_sections.matching, left: newLeft }
+      }
+    })
+  }
+
+  // Update matching right item
+  const updateMatchingRight = (index: number, value: string) => {
+    if (!currentExam) return
+    const newRight = [...currentExam.public_sections.matching.right]
+    newRight[index] = value
+    setCurrentExam({
+      ...currentExam,
+      public_sections: {
+        ...currentExam.public_sections,
+        matching: { ...currentExam.public_sections.matching, right: newRight }
+      }
+    })
+  }
+
+  // Update matching answer key
+  const updateMatchingAnswerKey = (questionNum: number, answerIndex: number) => {
+    if (!currentExam) return
+    setCurrentExam({
+      ...currentExam,
+      answer_key: {
+        ...currentExam.answer_key,
+        matchKey: { ...currentExam.answer_key.matchKey, [questionNum]: answerIndex }
+      }
+    })
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -398,15 +438,74 @@ export default function ExamsEditorPage() {
               </div>
             </div>
 
-            {/* Matching Questions - Simplified for now */}
+            {/* Matching Questions */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-bold mb-4">Харгалзуулах (13-20)</h2>
-              <p className="text-gray-600 text-sm mb-4">
-                Matching засах feature удахгүй нэмэгдэнэ...
+              <p className="text-sm text-gray-600 mb-4">
+                Зүүн тал (асуултууд) ↔ Баруун тал (хариултууд)
               </p>
-              <div className="text-sm text-gray-500">
-                Left items: {currentExam?.public_sections?.matching?.left?.length || 0}<br />
-                  Right items: {currentExam?.public_sections?.matching?.right?.length || 0}
+              
+              <div className="grid grid-cols-2 gap-6">
+                {/* Left side */}
+                <div>
+                  <h3 className="font-semibold mb-3">Зүүн тал (13-20):</h3>
+                  <div className="space-y-2">
+                    {currentExam?.public_sections?.matching?.left?.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{index + 13}.</span>
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) => updateMatchingLeft(index, e.target.value)}
+                          className="flex-1 px-2 py-1 border rounded text-sm"
+                          placeholder={`Асуулт ${index + 13}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right side */}
+                <div>
+                  <h3 className="font-semibold mb-3">Баруун тал (A-H):</h3>
+                  <div className="space-y-2">
+                    {currentExam?.public_sections?.matching?.right?.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{String.fromCharCode(65 + index)}.</span>
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) => updateMatchingRight(index, e.target.value)}
+                          className="flex-1 px-2 py-1 border rounded text-sm"
+                          placeholder={`Хариулт ${String.fromCharCode(65 + index)}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Answer keys for matching */}
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3">Зөв хариултууд:</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {Array(8).fill(0).map((_, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{index + 13} →</span>
+                      <select
+                        value={currentExam?.answer_key?.matchKey?.[String(index + 1)] || 1}
+                        onChange={(e) => updateMatchingAnswerKey(index + 1, parseInt(e.target.value))}
+                        className="px-2 py-1 border rounded bg-green-50 text-sm"
+                      >
+                        {Array(8).fill(0).map((_, i) => (
+                          <option key={i} value={i + 1}>
+                            {String.fromCharCode(65 + i)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
