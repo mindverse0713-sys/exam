@@ -101,6 +101,11 @@ export async function GET(request: NextRequest) {
     let useTemplate = false
     let templateWorkbook: XLSX.WorkBook | null = null
 
+    // Түр хугацаанд template-ийг идэвхгүй болгож, fallback формат ашиглах
+    console.log('Template-ийг идэвхгүй болгож, fallback формат ашиглаж байна')
+    useTemplate = false
+
+    /*
     try {
       const templateBuffer = readFileSync(TEMPLATE_PATH)
       templateWorkbook = XLSX.read(templateBuffer, { type: 'buffer' })
@@ -111,10 +116,11 @@ export async function GET(request: NextRequest) {
       console.error('Template path:', TEMPLATE_PATH)
       useTemplate = false
     }
+    */
 
     let workbook: XLSX.WorkBook
 
-    if (useTemplate && templateWorkbook) {
+    if (false && useTemplate && templateWorkbook) {
       // Template ашиглах
       workbook = templateWorkbook
 
@@ -434,9 +440,17 @@ export async function GET(request: NextRequest) {
           dataRows.push(row)
         })
 
+        console.log(`  Нийт мөр: ${dataRows.length}`)
+        console.log(`  Header: ${header.join(', ')}`)
+        
         const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows])
-        XLSX.utils.book_append_sheet(workbook, worksheet, `${gradeStr}-р анги`)
+        const sheetName = `${gradeNum}-р анги`
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+        console.log(`  Sheet "${sheetName}" нэмэгдлээ`)
       }
+      
+      console.log('\n=== Workbook үүссэн ===')
+      console.log('Sheet name-үүд:', workbook.SheetNames)
     }
 
     // Generate buffer
