@@ -257,7 +257,7 @@ export default function ExamsEditorPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-bold mb-4">Сонгох (1-12)</h2>
               <div className="space-y-4">
-                {currentExam.public_sections.mcq.map((question, index) => (
+                {currentExam?.public_sections?.mcq?.map((question, index) => (
                   <div key={index} className="border rounded p-4">
                     <div className="flex items-start gap-2 mb-2">
                       <span className="font-bold">{index + 1}.</span>
@@ -285,7 +285,7 @@ export default function ExamsEditorPage() {
                     <div className="mt-2 ml-6 flex items-center gap-2">
                       <span className="text-sm font-medium">Зөв хариулт:</span>
                       <select
-                        value={currentExam.answer_key.mcqKey[String(index + 1)] || 'A'}
+                        value={currentExam?.answer_key?.mcqKey?.[String(index + 1)] || 'A'}
                         onChange={(e) => updateMCQAnswerKey(index + 1, e.target.value)}
                         className="px-2 py-1 border rounded bg-green-50"
                       >
@@ -307,8 +307,8 @@ export default function ExamsEditorPage() {
                 Matching засах feature удахгүй нэмэгдэнэ...
               </p>
               <div className="text-sm text-gray-500">
-                Left items: {currentExam.public_sections.matching.left.length}<br />
-                Right items: {currentExam.public_sections.matching.right.length}
+                Left items: {currentExam?.public_sections?.matching?.left?.length || 0}<br />
+                  Right items: {currentExam?.public_sections?.matching?.right?.length || 0}
               </div>
             </div>
           </div>
