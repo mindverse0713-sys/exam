@@ -46,9 +46,14 @@ export async function GET(request: NextRequest) {
 
     const { data: attempts, error } = await query
 
+    console.log('=== Query результат ===')
+    console.log('Error:', error)
+    console.log('Attempts count:', attempts?.length)
+    console.log('Attempts sample:', attempts?.[0])
+
     if (error) {
       console.error('Supabase error:', error)
-      throw error
+      return NextResponse.json({ error: `Supabase алдаа: ${error.message}` }, { status: 500 })
     }
 
     if (!attempts || attempts.length === 0) {
@@ -56,21 +61,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Өгөгдөл олдсонгүй' }, { status: 404 })
     }
 
-    console.log(`Нийт ${attempts.length} оролдлого олдлоо`)
+    console.log(`✅ Нийт ${attempts.length} оролдлого олдлоо`)
 
     type AttemptRow = typeof attempts[0]
 
     // 1. Grade-ээр бүлэглэх
     const byGrade: Record<number, AttemptRow[]> = {}
     for (const attempt of attempts as AttemptRow[]) {
-      if (!byGrade[attempt.grade]) {
-        byGrade[attempt.grade] = []
+      const grade = attempt.grade
+      console.log(`Processing attempt: ${attempt.student_name}, grade: ${grade}, variant: ${attempt.variant}`)
+      if (!byGrade[grade]) {
+        byGrade[grade] = []
       }
-      byGrade[attempt.grade].push(attempt)
+      byGrade[grade].push(attempt)
     }
 
-    console.log('Ангиуд:', Object.keys(byGrade))
-    console.log('Анги бүрийн сурагч:', Object.entries(byGrade).map(([g, arr]) => `${g}-р анги: ${arr.length}`))
+    console.log('✅ Ангиуд:', Object.keys(byGrade))
+    console.log('✅ Анги бүрийн сурагч:', Object.entries(byGrade).map(([g, arr]) => `${g}-р анги: ${arr.length}`))
 
     // 2. Grade+Variant бүрээр answer_key татах
     type AnswerKey = {
