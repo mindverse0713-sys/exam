@@ -1,0 +1,302 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+type MCQQuestion = {
+  q: string
+  options: { A: string; B: string; C: string; D: string }
+}
+
+type MatchingSection = {
+  left: string[]
+  right: string[]
+}
+
+type PublicSections = {
+  mcq: MCQQuestion[]
+  matching: MatchingSection
+}
+
+type AnswerKey = {
+  mcqKey: Record<string, string>
+  matchKey: Record<string, number>
+}
+
+type Exam = {
+  id: string
+  grade: number
+  variant: string
+  public_sections: PublicSections
+  answer_key: AnswerKey
+  active: boolean
+}
+
+export default function ExamsEditorPage() {
+  const router = useRouter()
+  const [password, setPassword] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedGrade, setSelectedGrade] = useState<number>(10)
+  const [selectedVariant, setSelectedVariant] = useState<string>('A')
+  const [currentExam, setCurrentExam] = useState<Exam | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // Authentication
+  const handleLogin = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/auth?pass=${password}`)
+      if (res.ok) {
+        setIsAuthenticated(true)
+        loadExams()
+      } else {
+        alert('Нууц үг буруу байна')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Алдаа гарлаа')
+    }
+    setLoading(false)
+  }
+
+  // Load exams
+  const loadExams = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/exams?pass=${password}`)
+      const data = await res.json()
+      if (res.ok) {
+        setExams(data.exams || [])
+        // Load current exam if exists
+        const exam = data.exams?.find(
+          (e: Exam) => e.grade === selectedGrade && e.variant === selectedVariant
+        )
+        setCurrentExam(exam || null)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+    setLoading(false)
+  }
+
+  // Load exam when grade/variant changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      const exam = exams.find(
+        (e) => e.grade === selectedGrade && e.variant === selectedVariant
+      )
+      setCurrentExam(exam || null)
+    }
+  }, [selectedGrade, selectedVariant, exams, isAuthenticated])
+
+  // Save exam
+  const handleSave = async () => {
+    if (!currentExam) {
+      alert('Сорил сонгоно уу')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/exams?pass=${password}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentExam)
+      })
+
+      if (res.ok) {
+        alert('Амжилттай хадгалагдлаа!')
+        loadExams()
+      } else {
+        const data = await res.json()
+        alert(`Алдаа: ${data.error}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Алдаа гарлаа')
+    }
+    setSaving(false)
+  }
+
+  // Update MCQ question
+  const updateMCQQuestion = (index: number, field: string, value: string) => {
+    if (!currentExam) return
+    const newMcq = [...currentExam.public_sections.mcq]
+    if (field === 'q') {
+      newMcq[index].q = value
+    } else {
+      newMcq[index].options[field as 'A' | 'B' | 'C' | 'D'] = value
+    }
+    setCurrentExam({
+      ...currentExam,
+      public_sections: { ...currentExam.public_sections, mcq: newMcq }
+    })
+  }
+
+  // Update MCQ answer key
+  const updateMCQAnswerKey = (questionNum: number, answer: string) => {
+    if (!currentExam) return
+    setCurrentExam({
+      ...currentExam,
+      answer_key: {
+        ...currentExam.answer_key,
+        mcqKey: { ...currentExam.answer_key.mcqKey, [questionNum]: answer }
+      }
+    })
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
+          <h1 className="text-2xl font-bold mb-6">Админ нэвтрэх</h1>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            placeholder="Нууц үг"
+            className="w-full px-4 py-2 border rounded mb-4"
+          />
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Нэвтэрч байна...' : 'Нэвтрэх'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold">Сорил засах</h1>
+            <button
+              onClick={() => router.push('/admin')}
+              className="text-blue-600 hover:underline"
+            >
+              ← Буцах
+            </button>
+          </div>
+
+          {/* Grade and Variant Selector */}
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Анги</label>
+              <select
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(parseInt(e.target.value))}
+                className="px-4 py-2 border rounded"
+              >
+                <option value={10}>10-р анги</option>
+                <option value={11}>11-р анги</option>
+                <option value={12}>12-р анги</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Хувилбар</label>
+              <select
+                value={selectedVariant}
+                onChange={(e) => setSelectedVariant(e.target.value)}
+                className="px-4 py-2 border rounded"
+              >
+                <option value="A">A</option>
+                <option value="B">B</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleSave}
+                disabled={saving || !currentExam}
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {saving ? 'Хадгалж байна...' : '💾 Хадгалах'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Exam Content */}
+        {loading ? (
+          <div className="text-center py-12">Ачааллаж байна...</div>
+        ) : !currentExam ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-gray-600">
+              {selectedGrade}-р анги, Хувилбар {selectedVariant} сорил олдсонгүй
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* MCQ Questions */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4">Сонгох (1-12)</h2>
+              <div className="space-y-4">
+                {currentExam.public_sections.mcq.map((question, index) => (
+                  <div key={index} className="border rounded p-4">
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="font-bold">{index + 1}.</span>
+                      <input
+                        type="text"
+                        value={question.q}
+                        onChange={(e) => updateMCQQuestion(index, 'q', e.target.value)}
+                        className="flex-1 px-2 py-1 border rounded"
+                        placeholder="Асуулт"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 ml-6">
+                      {(['A', 'B', 'C', 'D'] as const).map((opt) => (
+                        <div key={opt} className="flex items-center gap-2">
+                          <span className="font-medium">{opt})</span>
+                          <input
+                            type="text"
+                            value={question.options[opt]}
+                            onChange={(e) => updateMCQQuestion(index, opt, e.target.value)}
+                            className="flex-1 px-2 py-1 border rounded text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 ml-6 flex items-center gap-2">
+                      <span className="text-sm font-medium">Зөв хариулт:</span>
+                      <select
+                        value={currentExam.answer_key.mcqKey[String(index + 1)] || 'A'}
+                        onChange={(e) => updateMCQAnswerKey(index + 1, e.target.value)}
+                        className="px-2 py-1 border rounded bg-green-50"
+                      >
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Matching Questions - Simplified for now */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4">Харгалзуулах (13-20)</h2>
+              <p className="text-gray-600 text-sm mb-4">
+                Matching засах feature удахгүй нэмэгдэнэ...
+              </p>
+              <div className="text-sm text-gray-500">
+                Left items: {currentExam.public_sections.matching.left.length}<br />
+                Right items: {currentExam.public_sections.matching.right.length}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
