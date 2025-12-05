@@ -105,8 +105,10 @@ export async function GET(request: NextRequest) {
       const templateBuffer = readFileSync(TEMPLATE_PATH)
       templateWorkbook = XLSX.read(templateBuffer, { type: 'buffer' })
       useTemplate = true
+      console.log('Template файл амжилттай уншлаа. Sheet name-үүд:', templateWorkbook.SheetNames)
     } catch (templateError) {
-      console.warn('Template файл олдсонгүй, одоогийн формат ашиглана:', templateError)
+      console.error('Template файл олдсонгүй, одоогийн формат ашиглана:', templateError)
+      console.error('Template path:', TEMPLATE_PATH)
       useTemplate = false
     }
 
@@ -121,21 +123,43 @@ export async function GET(request: NextRequest) {
         const sheetName = `${gradeStr}-р анги`
         let worksheet = workbook.Sheets[sheetName]
 
+        console.log(`Sheet хайж байна: "${sheetName}"`)
+        console.log(`Боломжтой sheet name-үүд:`, workbook.SheetNames)
+
         // Хэрэв sheet байхгүй бол template-ийн эхний sheet-ийг хуулна
         if (!worksheet) {
           const firstSheetName = workbook.SheetNames[0]
+          console.log(`Sheet "${sheetName}" олдсонгүй, эхний sheet "${firstSheetName}"-ийг хуулж байна`)
           if (firstSheetName) {
             const firstSheet = workbook.Sheets[firstSheetName]
-            // Sheet хуулах
-            const newSheet = JSON.parse(JSON.stringify(firstSheet))
+            // Sheet хуулах - бүх cell-үүдийг хуулах
+            const newSheet: XLSX.WorkSheet = {}
+            // Бүх cell-үүдийг хуулах
+            Object.keys(firstSheet).forEach((key) => {
+              if (key.startsWith('!')) {
+                // Sheet metadata хуулах
+                newSheet[key] = JSON.parse(JSON.stringify(firstSheet[key]))
+              } else {
+                // Cell утгууд хуулах
+                newSheet[key] = JSON.parse(JSON.stringify(firstSheet[key]))
+              }
+            })
             workbook.Sheets[sheetName] = newSheet
+            // SheetNames array-д нэмэх
+            if (!workbook.SheetNames.includes(sheetName)) {
+              workbook.SheetNames.push(sheetName)
+            }
             worksheet = newSheet
+            console.log(`Sheet "${sheetName}" амжилттай үүсгэлээ`)
           }
         }
 
         if (!worksheet) {
+          console.error(`Sheet "${sheetName}" үүсгэх боломжгүй, алгасах`)
           continue
         }
+
+        console.log(`Sheet "${sheetName}" ашиглаж байна, ${gradeAttempts.length} сурагч бөглөх`)
 
         // Template-ийн бүтцийг олох (сурагчийн мэдээлэл хэдээс эхэлдэг)
         // Default: 11-р мөр (header 10-р мөр байна гэж үзнэ)
