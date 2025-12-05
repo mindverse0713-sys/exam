@@ -120,9 +120,12 @@ export async function GET(request: NextRequest) {
 
       // Нэг ангид нэг sheet
       for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
-        const sheetName = `${gradeStr}-р анги`
+        const gradeNum = parseInt(gradeStr, 10)
+        const sheetName = `${gradeNum}-р анги`
         let worksheet = workbook.Sheets[sheetName]
 
+        console.log(`=== Анги ${gradeNum} боловсруулж байна ===`)
+        console.log(`Сурагчдын тоо: ${gradeAttempts.length}`)
         console.log(`Sheet хайж байна: "${sheetName}"`)
         console.log(`Боломжтой sheet name-үүд:`, workbook.SheetNames)
 
@@ -211,10 +214,13 @@ export async function GET(request: NextRequest) {
         }
 
         // Сурагчдын мэдээллийг бөглөх
+        console.log(`Сурагчдын мэдээлэл бөглөж эхлэж байна, startRow: ${startRow}`)
         ;(gradeAttempts as AttemptRow[]).forEach((attempt, index) => {
           const row = startRow + index
           const comboKey = `${attempt.grade}-${attempt.variant}`
           const answerKey = examKeyMap.get(comboKey)
+          
+          console.log(`Сурагч ${index + 1}/${gradeAttempts.length}: ${attempt.student_name}, мөр ${row}`)
 
           const qScores: number[] = []
 
