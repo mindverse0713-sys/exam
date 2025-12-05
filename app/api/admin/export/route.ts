@@ -128,29 +128,60 @@ export async function GET(request: NextRequest) {
 
         // Хэрэв sheet байхгүй бол template-ийн эхний sheet-ийг хуулна
         if (!worksheet) {
-          const firstSheetName = workbook.SheetNames[0]
-          console.log(`Sheet "${sheetName}" олдсонгүй, эхний sheet "${firstSheetName}"-ийг хуулж байна`)
-          if (firstSheetName) {
-            const firstSheet = workbook.Sheets[firstSheetName]
+          // Эхлээд template-ийн ямар нэг sheet-ийг олох
+          let sourceSheetName = workbook.SheetNames.find(name => 
+            name.includes('анги') || name.includes('Шалгалт') || name.includes('Sheet')
+          ) || workbook.SheetNames[0]
+          
+          console.log(`Sheet "${sheetName}" олдсонгүй, source sheet "${sourceSheetName}"-ийг хуулж байна`)
+          
+          if (sourceSheetName) {
+            const sourceSheet = workbook.Sheets[sourceSheetName]
+            if (!sourceSheet) {
+              console.error(`Source sheet "${sourceSheetName}" олдсонгүй`)
+              continue
+            }
+            
             // Sheet хуулах - бүх cell-үүдийг хуулах
             const newSheet: XLSX.WorkSheet = {}
+            
             // Бүх cell-үүдийг хуулах
-            Object.keys(firstSheet).forEach((key) => {
+            Object.keys(sourceSheet).forEach((key) => {
               if (key.startsWith('!')) {
                 // Sheet metadata хуулах
-                newSheet[key] = JSON.parse(JSON.stringify(firstSheet[key]))
+                if (key === '!ref') {
+                  newSheet[key] = sourceSheet[key]
+                } else {
+                  newSheet[key] = JSON.parse(JSON.stringify(sourceSheet[key]))
+                }
               } else {
                 // Cell утгууд хуулах
-                newSheet[key] = JSON.parse(JSON.stringify(firstSheet[key]))
+                const cell = sourceSheet[key]
+                if (cell) {
+                  newSheet[key] = {
+                    t: cell.t,
+                    v: cell.v,
+                    s: cell.s ? JSON.parse(JSON.stringify(cell.s)) : undefined,
+                    f: cell.f,
+                    F: cell.F,
+                    z: cell.z,
+                    l: cell.l,
+                    h: cell.h,
+                    w: cell.w,
+                    c: cell.c,
+                    r: cell.r,
+                  }
+                }
               }
             })
+            
             workbook.Sheets[sheetName] = newSheet
             // SheetNames array-д нэмэх
             if (!workbook.SheetNames.includes(sheetName)) {
               workbook.SheetNames.push(sheetName)
             }
             worksheet = newSheet
-            console.log(`Sheet "${sheetName}" амжилттай үүсгэлээ`)
+            console.log(`Sheet "${sheetName}" амжилттай үүсгэлээ, ${Object.keys(newSheet).length} cell хуулагдлаа`)
           }
         }
 
@@ -266,6 +297,23 @@ export async function GET(request: NextRequest) {
           if (!worksheet[cellPercent]) worksheet[cellPercent] = { t: 'n', v: null }
           if (!worksheet[cellLevel]) worksheet[cellLevel] = { t: 's', v: '' }
 
+          // Cell-үүдэд утга оруулах
+          if (!worksheet[cellNumber]) {
+            worksheet[cellNumber] = { t: 'n', v: 0 }
+          }
+          if (!worksheet[cellName]) {
+            worksheet[cellName] = { t: 's', v: '' }
+          }
+          if (!worksheet[cellScore]) {
+            worksheet[cellScore] = { t: 'n', v: null }
+          }
+          if (!worksheet[cellPercent]) {
+            worksheet[cellPercent] = { t: 'n', v: null }
+          }
+          if (!worksheet[cellLevel]) {
+            worksheet[cellLevel] = { t: 's', v: '' }
+          }
+
           worksheet[cellNumber].v = index + 1
           worksheet[cellName].v = attempt.student_name || ''
           // Сорил бөглөсөн бол дүн харуулах, алга бол хоосон
@@ -281,6 +329,8 @@ export async function GET(request: NextRequest) {
             }
             worksheet[cellRef].v = qScores[qIndex] || 0
           })
+          
+          console.log(`Сурагч ${index + 1}: ${attempt.student_name}, мөр ${row}, дүн: ${finalScore}`)
         })
       }
     } else {
