@@ -43,33 +43,46 @@ export default function ExamsEditorPage() {
   const [currentExam, setCurrentExam] = useState<Exam | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Check for existing auth on mount
+  useEffect(() => {
+    const stored = sessionStorage.getItem('admin_auth')
+    const storedPass = sessionStorage.getItem('admin_pass')
+    if (stored === 'true' && storedPass) {
+      setPassword(storedPass)
+      setIsAuthenticated(true)
+      loadExamsWithPassword(storedPass)
+    }
+  }, [])
+
   // Authentication
   const handleLogin = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/auth?pass=${password}`)
+      const res = await fetch(`/api/admin/exams?pass=${password}`)
       if (res.ok) {
+        sessionStorage.setItem('admin_auth', 'true')
+        sessionStorage.setItem('admin_pass', password)
         setIsAuthenticated(true)
         loadExams()
       } else {
-        alert('Нууц үг буруу байна')
+        const data = await res.json()
+        alert(`Нууц үг буруу байна: ${data.error || res.status}`)
       }
     } catch (err) {
       console.error(err)
-      alert('Алдаа гарлаа')
+      alert('Алдаа гарлаа: ' + (err instanceof Error ? err.message : 'Unknown'))
     }
     setLoading(false)
   }
 
-  // Load exams
-  const loadExams = async () => {
+  // Load exams with password
+  const loadExamsWithPassword = async (pass: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/exams?pass=${password}`)
+      const res = await fetch(`/api/admin/exams?pass=${pass}`)
       const data = await res.json()
       if (res.ok) {
         setExams(data.exams || [])
-        // Load current exam if exists
         const exam = data.exams?.find(
           (e: Exam) => e.grade === selectedGrade && e.variant === selectedVariant
         )
@@ -81,9 +94,14 @@ export default function ExamsEditorPage() {
     setLoading(false)
   }
 
+  // Load exams
+  const loadExams = async () => {
+    loadExamsWithPassword(password)
+  }
+
   // Load exam when grade/variant changes
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && exams.length > 0) {
       const exam = exams.find(
         (e) => e.grade === selectedGrade && e.variant === selectedVariant
       )
