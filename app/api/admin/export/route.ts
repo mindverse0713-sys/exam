@@ -347,9 +347,22 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Template байхгүй бол одоогийн формат ашиглах
+      console.log('=== Fallback формат ашиглаж байна ===')
+      console.log('byGrade keys:', Object.keys(byGrade))
+      console.log('byGrade values count:', Object.values(byGrade).map(arr => arr.length))
+      
       workbook = XLSX.utils.book_new()
 
       for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
+        const gradeNum = parseInt(gradeStr, 10)
+        console.log(`\n=== Анги ${gradeNum} боловсруулж байна (fallback) ===`)
+        console.log(`Сурагчдын тоо: ${gradeAttempts.length}`)
+        
+        if (gradeAttempts.length === 0) {
+          console.warn(`Анги ${gradeNum} хоосон байна, алгасах`)
+          continue
+        }
+        
         const header: (string | number)[] = ['№', 'Сурагчийн нэр']
         for (let i = 1; i <= 20; i++) {
           header.push(i)
@@ -359,6 +372,7 @@ export async function GET(request: NextRequest) {
         const dataRows: (string | number)[][] = []
 
         ;(gradeAttempts as AttemptRow[]).forEach((attempt, index) => {
+          console.log(`  Сурагч ${index + 1}: ${attempt.student_name}`)
           const comboKey = `${attempt.grade}-${attempt.variant}`
           const answerKey = examKeyMap.get(comboKey)
 
