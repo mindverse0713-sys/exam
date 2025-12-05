@@ -109,13 +109,38 @@ export default function ExamsEditorPage() {
     }
   }, [selectedGrade, selectedVariant, exams, isAuthenticated])
 
+  // Delete exam
+  const handleDeleteExam = async () => {
+    if (!currentExam) return
+
+    const confirmed = confirm(
+      `${selectedGrade}-р анги, Хувилбар ${selectedVariant} сорил устгах уу?`
+    )
+    if (!confirmed) return
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/exams?id=${currentExam.id}&pass=${password}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        alert('Сорил устгагдлаа!')
+        setCurrentExam(null)
+        loadExams()
+      } else {
+        const data = await res.json()
+        alert(`Алдаа: ${data.error}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Алдаа гарлаа')
+    }
+    setSaving(false)
+  }
+
   // Create new exam
   const handleCreateExam = async () => {
-    if (currentExam) {
-      alert('Одоо ажиллаж байгаа сорилыг эхлээд хадгална уу')
-      return
-    }
-
     const confirmed = confirm(
       `${selectedGrade}-р анги, Хувилбар ${selectedVariant} шинэ сорил үүсгэх үү?`
     )
@@ -285,20 +310,32 @@ export default function ExamsEditorPage() {
               </select>
             </div>
             <div className="flex items-end gap-2">
-              <button
-                onClick={handleCreateExam}
-                disabled={loading || currentExam !== null}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                ➕ Шинэ сорил
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !currentExam}
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-              >
-                {saving ? 'Хадгалж байна...' : '💾 Хадгалах'}
-              </button>
+              {!currentExam ? (
+                <button
+                  onClick={handleCreateExam}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  ➕ Шинэ сорил үүсгэх
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Хадгалж байна...' : '💾 Хадгалах'}
+                  </button>
+                  <button
+                    onClick={handleDeleteExam}
+                    disabled={saving}
+                    className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    🗑️ Устгах
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
