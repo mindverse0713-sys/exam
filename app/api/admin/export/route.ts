@@ -455,7 +455,8 @@ export async function GET(request: NextRequest) {
         })
 
         console.log(`  Нийт мөр: ${dataRows.length}`)
-        console.log(`  Header: ${header.join(', ')}`)
+        console.log(`  Header багана: ${header.length}`)
+        console.log(`  Эхний мөр sample:`, dataRows[0]?.slice(0, 5))
         
         const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows])
         const sheetName = `${gradeNum}-р анги`
@@ -465,6 +466,7 @@ export async function GET(request: NextRequest) {
       
       console.log('\n=== Workbook үүссэн ===')
       console.log('Sheet name-үүд:', workbook.SheetNames)
+      console.log('Sheet тоо:', workbook.SheetNames.length)
     }
 
     // Generate buffer
