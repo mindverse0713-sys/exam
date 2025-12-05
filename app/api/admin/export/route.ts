@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 
     if (false && useTemplate && templateWorkbook) {
       // Template ашиглах
-      workbook = templateWorkbook
+      workbook = templateWorkbook as XLSX.WorkBook
 
       // Нэг ангид нэг sheet
       for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
