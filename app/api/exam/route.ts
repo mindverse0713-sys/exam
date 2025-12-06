@@ -55,20 +55,21 @@ export async function GET(request: NextRequest) {
     }
     
     // Shuffle matching right side for client and create mapping
-    let shuffleMapping: number[] = [] // Maps shuffled index (1-based) to original index (1-based)
+    // shuffleMapping[i] = original index (1-based) of item at shuffled position i+1
+    let shuffleMapping: number[] = []
     if (sections.matching && sections.matching.right) {
       const original = [...sections.matching.right]
       const shuffled = [...sections.matching.right]
-      // Fisher-Yates shuffle
+      // Fisher-Yates shuffle with index tracking
+      const indices = original.map((_, idx) => idx) // Track original indices
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
+        // Swap both arrays and indices
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        [indices[i], indices[j]] = [indices[j], indices[i]]
       }
-      // Create mapping: for each shuffled position, find which original index it came from
-      shuffleMapping = shuffled.map((shuffledItem) => {
-        const originalIndex = original.findIndex((origItem) => origItem === shuffledItem)
-        return originalIndex + 1 // Convert to 1-based
-      })
+      // Create mapping: shuffled position -> original index (1-based)
+      shuffleMapping = indices.map(idx => idx + 1)
       sections.match = {
         left: sections.matching.left || [],
         right: shuffled
@@ -76,16 +77,16 @@ export async function GET(request: NextRequest) {
     } else if (sections.match && sections.match.right) {
       const original = [...sections.match.right]
       const shuffled = [...sections.match.right]
-      // Fisher-Yates shuffle
+      // Fisher-Yates shuffle with index tracking
+      const indices = original.map((_, idx) => idx) // Track original indices
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
+        // Swap both arrays and indices
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        [indices[i], indices[j]] = [indices[j], indices[i]]
       }
-      // Create mapping
-      shuffleMapping = shuffled.map((shuffledItem) => {
-        const originalIndex = original.findIndex((origItem) => origItem === shuffledItem)
-        return originalIndex + 1 // Convert to 1-based
-      })
+      // Create mapping: shuffled position -> original index (1-based)
+      shuffleMapping = indices.map(idx => idx + 1)
       sections.match.right = shuffled
     }
 
