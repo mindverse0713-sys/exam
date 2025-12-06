@@ -43,6 +43,49 @@ export default function ExamsEditorPage() {
   const [currentExam, setCurrentExam] = useState<Exam | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const MAX_MCQ = 12
+  const MAX_MATCH = 8
+
+  const buildDefaultMcq = () =>
+    Array(MAX_MCQ)
+      .fill(null)
+      .map(() => ({
+        q: '',
+        options: { A: '', B: '', C: '', D: '' }
+      }))
+
+  const buildDefaultMatching = () => ({
+    left: Array(MAX_MATCH).fill(''),
+    right: Array(MAX_MATCH).fill('')
+  })
+
+  const buildDefaultAnswerKeys = () => ({
+    mcqKey: Object.fromEntries(Array(MAX_MCQ).fill(0).map((_, i) => [String(i + 1), 'A'])),
+    matchKey: Object.fromEntries(Array(MAX_MATCH).fill(0).map((_, i) => [String(i + 1), 1]))
+  })
+
+  const rebuildMcqKey = (len: number, prevKey: Record<string, string> = {}) =>
+    Object.fromEntries(
+      Array(len)
+        .fill(0)
+        .map((_, i) => [String(i + 1), prevKey[String(i + 1)] || 'A'])
+    )
+
+  const rebuildMatchKey = (
+    leftLen: number,
+    rightLen: number,
+    prevKey: Record<string, number> = {}
+  ) =>
+    Object.fromEntries(
+      Array(leftLen)
+        .fill(0)
+        .map((_, i) => {
+          const prev = prevKey[String(i + 1)]
+          const val = prev && prev <= rightLen ? prev : rightLen > 0 ? 1 : 0
+          return [String(i + 1), val]
+        })
+    )
+
   // Check for existing auth on mount
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_auth')
@@ -153,19 +196,10 @@ export default function ExamsEditorPage() {
         grade: selectedGrade,
         variant: selectedVariant,
         public_sections: {
-          mcq: Array(12).fill(null).map(() => ({
-            q: '',
-            options: { A: '', B: '', C: '', D: '' }
-          })),
-          matching: {
-            left: Array(8).fill(''),
-            right: Array(8).fill('')
-          }
+          mcq: buildDefaultMcq(),
+          matching: buildDefaultMatching()
         },
-        answer_key: {
-          mcqKey: Object.fromEntries(Array(12).fill(0).map((_, i) => [String(i + 1), 'A'])),
-          matchKey: Object.fromEntries(Array(8).fill(0).map((_, i) => [String(i + 1), 1]))
-        }
+        answer_key: buildDefaultAnswerKeys()
       }
 
       const res = await fetch(`/api/admin/exams?pass=${password}`, {
@@ -284,6 +318,100 @@ export default function ExamsEditorPage() {
     })
   }
 
+  // Add MCQ question (max 12)
+  const addMcqQuestion = () => {
+    if (!currentExam) return
+    const len = currentExam.public_sections.mcq.length
+    if (len >= MAX_MCQ) {
+      alert('Сонгох асуулт 12-оос ихгүй байна')
+      return
+    }
+    const newMcq = [
+      ...currentExam.public_sections.mcq,
+      { q: '', options: { A: '', B: '', C: '', D: '' } }
+    ]
+    const newMcqKey = rebuildMcqKey(newMcq.length, currentExam.answer_key.mcqKey)
+    setCurrentExam({
+      ...currentExam,
+      public_sections: { ...currentExam.public_sections, mcq: newMcq },
+      answer_key: { ...currentExam.answer_key, mcqKey: newMcqKey }
+    })
+  }
+
+  // Remove MCQ question
+  const removeMcqQuestion = (index: number) => {
+    if (!currentExam) return
+    const len = currentExam.public_sections.mcq.length
+    if (len <= 1) {
+      alert('Дор хаяж 1 асуулт байх ёстой')
+      return
+    }
+    const newMcq = currentExam.public_sections.mcq.filter((_, i) => i !== index)
+    const newMcqKey = rebuildMcqKey(newMcq.length, currentExam.answer_key.mcqKey)
+    setCurrentExam({
+      ...currentExam,
+      public_sections: { ...currentExam.public_sections, mcq: newMcq },
+      answer_key: { ...currentExam.answer_key, mcqKey: newMcqKey }
+    })
+  }
+
+  // Add matching row (max 8)
+  const addMatchingRow = () => {
+    if (!currentExam) return
+    const len = currentExam.public_sections.matching.left.length
+    if (len >= MAX_MATCH) {
+      alert('Харгалзуулах асуулт 8-оос ихгүй байна')
+      return
+    }
+    const newLeft = [...currentExam.public_sections.matching.left, '']
+    const newRight = [...currentExam.public_sections.matching.right, '']
+    const newMatchKey = rebuildMatchKey(newLeft.length, newRight.length, currentExam.answer_key.matchKey)
+    setCurrentExam({
+      ...currentExam,
+      public_sections: {
+        ...currentExam.public_sections,
+        matching: { left: newLeft, right: newRight }
+      },
+      answer_key: { ...currentExam.answer_key, matchKey: newMatchKey }
+    })
+  }
+
+  // Remove matching row
+  const removeMatchingRow = (index: number) => {
+    if (!currentExam) return
+    const len = currentExam.public_sections.matching.left.length
+    if (len <= 1) {
+      alert('Дор хаяж 1 харгалзуулах асуулт үлдэх ёстой')
+      return
+    }
+    const newLeft = currentExam.public_sections.matching.left.filter((_, i) => i !== index)
+    const newRight = currentExam.public_sections.matching.right.filter((_, i) => i !== index)
+    const newMatchKey = rebuildMatchKey(newLeft.length, newRight.length, currentExam.answer_key.matchKey)
+    setCurrentExam({
+      ...currentExam,
+      public_sections: {
+        ...currentExam.public_sections,
+        matching: { left: newLeft, right: newRight }
+      },
+      answer_key: { ...currentExam.answer_key, matchKey: newMatchKey }
+    })
+  }
+
+  // Reset exam to default template
+  const resetExamTemplate = () => {
+    if (!currentExam) return
+    const confirmed = confirm('Сорилыг хоосон төлөвт reset хийх үү?')
+    if (!confirmed) return
+    setCurrentExam({
+      ...currentExam,
+      public_sections: {
+        mcq: buildDefaultMcq(),
+        matching: buildDefaultMatching()
+      },
+      answer_key: buildDefaultAnswerKeys()
+    })
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -393,7 +521,23 @@ export default function ExamsEditorPage() {
           <div className="space-y-6">
             {/* MCQ Questions */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Сонгох (1-12)</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Сонгох (1-12)</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addMcqQuestion}
+                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    ➕ Асуулт нэмэх
+                  </button>
+                  <button
+                    onClick={resetExamTemplate}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  >
+                    🔄 Reset
+                  </button>
+                </div>
+              </div>
               <div className="space-y-4">
                 {currentExam?.public_sections?.mcq?.map((question, index) => (
                   <div key={index} className="border rounded p-4">
@@ -406,6 +550,12 @@ export default function ExamsEditorPage() {
                         className="flex-1 px-2 py-1 border rounded"
                         placeholder="Асуулт"
                       />
+                      <button
+                        onClick={() => removeMcqQuestion(index)}
+                        className="text-red-600 text-sm hover:underline"
+                      >
+                        🗑 Устгах
+                      </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 ml-6">
                       {(['A', 'B', 'C', 'D'] as const).map((opt) => (
@@ -440,7 +590,23 @@ export default function ExamsEditorPage() {
 
             {/* Matching Questions */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Харгалзуулах (Асуулт 13-20)</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Харгалзуулах (Асуулт 13-20)</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addMatchingRow}
+                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    ➕ Мөр нэмэх
+                  </button>
+                  <button
+                    onClick={resetExamTemplate}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  >
+                    🔄 Reset
+                  </button>
+                </div>
+              </div>
               <p className="text-sm text-blue-600 mb-4">
                 💡 Зүүн тал - Асуултууд (1-8) | Баруун тал - Хариултууд (A-H) | Зөв хариултыг доорхи dropdown-оос сонгоно
               </p>
@@ -460,6 +626,12 @@ export default function ExamsEditorPage() {
                           placeholder={`Асуулт ${index + 1} (Шалгалтад ${index + 13}-р асуулт)`}
                           rows={2}
                         />
+                        <button
+                          onClick={() => removeMatchingRow(index)}
+                          className="text-red-600 text-sm hover:underline"
+                        >
+                          🗑
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -479,6 +651,12 @@ export default function ExamsEditorPage() {
                           placeholder={`Хариулт ${String.fromCharCode(65 + index)}`}
                           rows={2}
                         />
+                        <button
+                          onClick={() => removeMatchingRow(index)}
+                          className="text-red-600 text-sm hover:underline"
+                        >
+                          🗑
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -489,7 +667,7 @@ export default function ExamsEditorPage() {
               <div className="mt-6 bg-yellow-50 p-4 rounded">
                 <h3 className="font-semibold mb-3 text-yellow-900">🎯 Зөв харгалзуулалт:</h3>
                 <div className="grid grid-cols-4 gap-4">
-                  {Array(8).fill(0).map((_, index) => (
+                  {Array(currentExam?.public_sections?.matching?.left?.length || 0).fill(0).map((_, index) => (
                     <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border-2 border-yellow-200">
                       <span className="text-sm font-bold text-blue-700">{index + 1}</span>
                       <span className="text-gray-400">→</span>
@@ -498,7 +676,7 @@ export default function ExamsEditorPage() {
                         onChange={(e) => updateMatchingAnswerKey(index + 1, parseInt(e.target.value))}
                         className="flex-1 px-2 py-1 border-2 border-yellow-300 rounded bg-yellow-50 text-sm font-bold text-green-700 focus:border-yellow-500"
                       >
-                        {Array(8).fill(0).map((_, i) => (
+                        {Array(currentExam?.public_sections?.matching?.right?.length || 0).fill(0).map((_, i) => (
                           <option key={i} value={i + 1}>
                             {String.fromCharCode(65 + i)}
                           </option>
