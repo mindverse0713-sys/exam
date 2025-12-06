@@ -126,9 +126,10 @@ export default function ExamsEditorPage() {
       const data = await res.json()
       if (res.ok) {
         setExams(data.exams || [])
-        const exam = data.exams?.find(
-          (e: Exam) => e.grade === selectedGrade && e.variant === selectedVariant
-        )
+        const exam =
+          data.exams?.find(
+            (e: Exam) => e.grade === selectedGrade && e.variant === selectedVariant
+          ) || data.exams?.[0] || null
         setCurrentExam(exam || null)
       }
     } catch (err) {
@@ -209,8 +210,17 @@ export default function ExamsEditorPage() {
       })
 
       if (res.ok) {
+        const data = await res.json()
         alert('Шинэ сорил үүсгэгдлээ!')
-        loadExams()
+        // Шинээр үүссэн сорилыг шууд сонгоно
+        const created = data.exam
+        if (created) {
+          setCurrentExam(created)
+          // answer_key/public_sections шинэ state дээр
+          setExams((prev) => [...(prev || []), created])
+        } else {
+          loadExams()
+        }
       } else {
         const data = await res.json()
         alert(`Алдаа: ${data.error}`)
