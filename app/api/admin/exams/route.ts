@@ -6,14 +6,20 @@ const ADMIN_PASS = process.env.ADMIN_PASS || 'change_me'
 function checkAuth(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
   const password = authHeader?.replace('Bearer ', '') || request.nextUrl.searchParams.get('pass')
+  console.log('Checking auth:', { password, ADMIN_PASS })
   return password === ADMIN_PASS
 }
 
 // GET: Бүх сорилууд эсвэл нэг сорил авах
 export async function GET(request: NextRequest) {
+  console.log('GET /api/admin/exams called')
+  
   if (!checkAuth(request)) {
+    console.log('Auth failed')
     return NextResponse.json({ error: 'Нэвтрэх эрх хүрэхгүй' }, { status: 401 })
   }
+  
+  console.log('Auth passed')
 
   const gradeParam = request.nextUrl.searchParams.get('grade')
   const variantParam = request.nextUrl.searchParams.get('variant')
@@ -39,7 +45,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ exams })
+    // Map sections_public to public_sections for frontend compatibility
+    const mappedExams = exams?.map((exam: any) => ({
+      ...exam,
+      public_sections: exam.sections_public || exam.public_sections
+    })) || []
+
+    return NextResponse.json({ exams: mappedExams })
   } catch (err) {
     console.error('GET /api/admin/exams error:', err)
     return NextResponse.json(
@@ -68,7 +80,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (public_sections) {
-      updateData.public_sections = public_sections
+      updateData.sections_public = public_sections // Use correct column name
     }
 
     if (answer_key) {
@@ -129,7 +141,7 @@ export async function POST(request: NextRequest) {
       .insert({
         grade,
         variant,
-        public_sections: public_sections || { mcq: [], matching: { left: [], right: [] } },
+        sections_public: public_sections || { mcq: [], matching: { left: [], right: [] } }, // Use correct column name
         answer_key: answer_key || { mcqKey: {}, matchKey: {} },
         active: true
       })
@@ -141,7 +153,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ exam: data }, { status: 201 })
+    // Map sections_public to public_sections for frontend compatibility
+    const mappedExam = {
+      ...data,
+      public_sections: data.sections_public || data.public_sections
+    }
+
+    return NextResponse.json({ exam: mappedExam }, { status: 201 })
   } catch (err) {
     console.error('POST /api/admin/exams error:', err)
     return NextResponse.json(
