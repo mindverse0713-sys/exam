@@ -149,10 +149,10 @@ export async function submitExam(formData: FormData) {
       throw new Error(errorMessage)
     }
 
-    // Get attempt to find grade/variant
+    // Get attempt to find grade/variant and shuffle mapping
     const { data: attempt, error: attemptError } = await supabaseAdmin
       .from('attempts')
-      .select('grade, variant, started_at')
+      .select('grade, variant, started_at, meta')
       .eq('id', attemptId)
       .single()
 
@@ -209,10 +209,17 @@ export async function submitExam(formData: FormData) {
     }
 
     // Grade Matching (8 questions)
+    // Convert shuffled indices to original indices using shuffle mapping
     let matchScore = 0
+    const shuffleMapping = (attempt.meta as any)?.shuffleMapping as number[] | undefined
     for (const [qNum, correctIndex] of Object.entries(answerKey.matchKey)) {
-      const studentAnswer = parseInt(answersMatch[qNum]?.toString() || '0')
-      if (studentAnswer === correctIndex) {
+      const studentShuffledIndex = parseInt(answersMatch[qNum]?.toString() || '0')
+      // Convert shuffled index (1-based) to original index (1-based)
+      let studentOriginalIndex = studentShuffledIndex
+      if (shuffleMapping && shuffleMapping.length > 0 && studentShuffledIndex > 0 && studentShuffledIndex <= shuffleMapping.length) {
+        studentOriginalIndex = shuffleMapping[studentShuffledIndex - 1] // Convert to 0-based for array access
+      }
+      if (studentOriginalIndex === correctIndex) {
         matchScore++
       }
     }
