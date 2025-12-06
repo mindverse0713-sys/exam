@@ -54,26 +54,47 @@ export async function GET(request: NextRequest) {
       })
     }
     
-    // Shuffle matching right side for client
+    // Shuffle matching right side for client and create mapping
+    let shuffleMapping: number[] = [] // Maps shuffled index (1-based) to original index (1-based)
     if (sections.matching && sections.matching.right) {
+      const original = [...sections.matching.right]
       const shuffled = [...sections.matching.right]
       // Fisher-Yates shuffle
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
       }
+      // Create mapping: for each shuffled position, find which original index it came from
+      shuffleMapping = shuffled.map((shuffledItem) => {
+        const originalIndex = original.findIndex((origItem) => origItem === shuffledItem)
+        return originalIndex + 1 // Convert to 1-based
+      })
       sections.match = {
         left: sections.matching.left || [],
         right: shuffled
       }
     } else if (sections.match && sections.match.right) {
+      const original = [...sections.match.right]
       const shuffled = [...sections.match.right]
       // Fisher-Yates shuffle
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
       }
+      // Create mapping
+      shuffleMapping = shuffled.map((shuffledItem) => {
+        const originalIndex = original.findIndex((origItem) => origItem === shuffledItem)
+        return originalIndex + 1 // Convert to 1-based
+      })
       sections.match.right = shuffled
+    }
+
+    // Store shuffle mapping in attempt's meta field for later grading
+    if (shuffleMapping.length > 0) {
+      await supabaseAdmin
+        .from('attempts')
+        .update({ meta: { shuffleMapping } })
+        .eq('id', attemptId)
     }
 
     return NextResponse.json({

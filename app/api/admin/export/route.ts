@@ -159,15 +159,22 @@ export async function GET(request: NextRequest) {
           }
 
           // Matching (13–20)
+          // Convert shuffled indices to original indices using shuffle mapping
           const answersMatch = (attempt.answers_match || {}) as Record<string, number>
+          const shuffleMapping = (attempt.meta as any)?.shuffleMapping as number[] | undefined
           for (let q = 1; q <= 8; q++) {
             const keyStr = String(q)
             const correctIndex = answerKey.matchKey?.[keyStr]
-            const studentRaw = answersMatch?.[keyStr]
-            const studentIndex = typeof studentRaw === 'number' ? studentRaw : 0
+            const studentShuffledIndex = typeof answersMatch?.[keyStr] === 'number' ? answersMatch[keyStr] : 0
+            
+            // Convert shuffled index (1-based) to original index (1-based)
+            let studentOriginalIndex = studentShuffledIndex
+            if (shuffleMapping && shuffleMapping.length > 0 && studentShuffledIndex > 0 && studentShuffledIndex <= shuffleMapping.length) {
+              studentOriginalIndex = shuffleMapping[studentShuffledIndex - 1] // Convert to 0-based for array access
+            }
 
-            if (correctIndex != null && !Number.isNaN(studentIndex) && studentIndex > 0) {
-              qScores.push(studentIndex === correctIndex ? 1 : 0)
+            if (correctIndex != null && !Number.isNaN(studentOriginalIndex) && studentOriginalIndex > 0) {
+              qScores.push(studentOriginalIndex === correctIndex ? 1 : 0)
             } else {
               qScores.push(0)
             }
