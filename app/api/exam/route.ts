@@ -34,9 +34,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Сорил олдсонгүй' }, { status: 404 })
     }
 
-    // Shuffle matching right side for client
+    // Transform sections for client
     const sections = { ...exam.sections_public }
-    if (sections.match && sections.match.right) {
+    
+    // Transform MCQ options from object to array
+    if (sections.mcq && Array.isArray(sections.mcq)) {
+      sections.mcq = sections.mcq.map((q: any, idx: number) => {
+        // If options is already an array, use it
+        if (Array.isArray(q.options)) {
+          return { i: idx + 1, q: q.q, options: q.options }
+        }
+        // If options is an object, convert to array [A, B, C, D]
+        if (q.options && typeof q.options === 'object') {
+          const optArray = ['A', 'B', 'C', 'D'].map(letter => q.options[letter] || '')
+          return { i: idx + 1, q: q.q, options: optArray }
+        }
+        // Fallback
+        return { i: idx + 1, q: q.q || '', options: [] }
+      })
+    }
+    
+    // Shuffle matching right side for client
+    if (sections.matching && sections.matching.right) {
+      const shuffled = [...sections.matching.right]
+      // Fisher-Yates shuffle
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      sections.match = {
+        left: sections.matching.left || [],
+        right: shuffled
+      }
+    } else if (sections.match && sections.match.right) {
       const shuffled = [...sections.match.right]
       // Fisher-Yates shuffle
       for (let i = shuffled.length - 1; i > 0; i--) {
