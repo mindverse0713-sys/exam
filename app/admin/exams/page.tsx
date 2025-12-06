@@ -223,7 +223,38 @@ export default function ExamsEditorPage() {
         }
       } else {
         const data = await res.json()
-        alert(`Алдаа: ${data.error}`)
+        const errorMsg = data.error || ''
+        if (errorMsg.includes('аль хэдийн байна') || errorMsg.includes('duplicate')) {
+          // Exam already exists - load it instead
+          await loadExams()
+          // Wait for state update
+          setTimeout(() => {
+            const existingExam = exams.find(
+              (e) => e.grade === selectedGrade && e.variant === selectedVariant
+            )
+            if (existingExam) {
+              setCurrentExam(existingExam)
+              alert('Сорил аль хэдийн байна. Одоо засаж болно.')
+            } else {
+              // Try one more time after state updates
+              loadExams().then(() => {
+                setTimeout(() => {
+                  const examAfterReload = exams.find(
+                    (e) => e.grade === selectedGrade && e.variant === selectedVariant
+                  )
+                  if (examAfterReload) {
+                    setCurrentExam(examAfterReload)
+                    alert('Сорил олдлоо. Одоо засаж болно.')
+                  } else {
+                    alert(`Алдаа: ${errorMsg}`)
+                  }
+                }, 300)
+              })
+            }
+          }, 300)
+        } else {
+          alert(`Алдаа: ${errorMsg}`)
+        }
       }
     } catch (err) {
       console.error(err)
