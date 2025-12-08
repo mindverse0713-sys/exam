@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       .order('started_at', { ascending: false })
 
     if (gradeParam && gradeParam !== 'all') {
-      query = query.eq('grade', parseInt(gradeParam))
+      query = query.eq('grade', gradeParam)
     }
 
     if (variantParam && variantParam !== 'all') {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     type AttemptRow = typeof attempts[0]
 
     // 1. Grade-ээр бүлэглэх
-    const byGrade: Record<number, AttemptRow[]> = {}
+    const byGrade: Record<string, AttemptRow[]> = {}
     for (const attempt of attempts as AttemptRow[]) {
       const grade = attempt.grade
       console.log(`Processing attempt: ${attempt.student_name}, grade: ${grade}, variant: ${attempt.variant}`)
@@ -94,12 +94,11 @@ export async function GET(request: NextRequest) {
 
     for (const key of combos) {
       const [gradeStrKey, variantKey] = key.split('-')
-      const gradeKey = parseInt(gradeStrKey, 10)
 
       const { data: exam, error: examError } = await supabaseAdmin
         .from('exams')
         .select('answer_key')
-        .eq('grade', gradeKey)
+        .eq('grade', gradeStrKey)
         .eq('variant', variantKey)
         .eq('active', true)
         .single()
@@ -116,8 +115,7 @@ export async function GET(request: NextRequest) {
     const workbook = XLSX.utils.book_new()
 
     for (const [gradeStr, gradeAttempts] of Object.entries(byGrade)) {
-      const gradeNum = parseInt(gradeStr, 10)
-      console.log(`\n=== Анги ${gradeNum} боловсруулж байна ===`)
+      console.log(`\n=== Анги ${gradeStr} боловсруулж байна ===`)
       console.log(`Сурагчдын тоо: ${gradeAttempts.length}`)
 
       if (gradeAttempts.length === 0) {
@@ -145,36 +143,14 @@ export async function GET(request: NextRequest) {
         const qScores: number[] = []
 
         if (answerKey) {
-          // MCQ (1–12)
+          // MCQ (1–20)
           const answersMcq = (attempt.answers_mcq || {}) as Record<string, string>
-          for (let q = 1; q <= 12; q++) {
+          for (let q = 1; q <= 20; q++) {
             const keyStr = String(q)
             const correct = answerKey.mcqKey?.[keyStr]
             const student = answersMcq?.[keyStr]
             if (correct && student) {
               qScores.push(student === correct ? 1 : 0)
-            } else {
-              qScores.push(0)
-            }
-          }
-
-          // Matching (13–20)
-          // Convert shuffled indices to original indices using shuffle mapping
-          const answersMatch = (attempt.answers_match || {}) as Record<string, number>
-          const shuffleMapping = (attempt.meta as any)?.shuffleMapping as number[] | undefined
-          for (let q = 1; q <= 8; q++) {
-            const keyStr = String(q)
-            const correctIndex = answerKey.matchKey?.[keyStr]
-            const studentShuffledIndex = typeof answersMatch?.[keyStr] === 'number' ? answersMatch[keyStr] : 0
-            
-            // Convert shuffled index (1-based) to original index (1-based)
-            let studentOriginalIndex = studentShuffledIndex
-            if (shuffleMapping && shuffleMapping.length > 0 && studentShuffledIndex > 0 && studentShuffledIndex <= shuffleMapping.length) {
-              studentOriginalIndex = shuffleMapping[studentShuffledIndex - 1] // Convert to 0-based for array access
-            }
-
-            if (correctIndex != null && !Number.isNaN(studentOriginalIndex) && studentOriginalIndex > 0) {
-              qScores.push(studentOriginalIndex === correctIndex ? 1 : 0)
             } else {
               qScores.push(0)
             }
@@ -196,8 +172,8 @@ export async function GET(request: NextRequest) {
           ? qScores.reduce((a, b) => a + b, 0)
           : null
 
-        const total =
-          typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : 20
+      const total =
+        typeof attempt.total === 'number' && attempt.total > 0 ? attempt.total : 20
 
         let percent: number | string = ''
         const finalScore = score !== null ? score : (hasSubmitted ? qScores.reduce((a, b) => a + b, 0) : null)
