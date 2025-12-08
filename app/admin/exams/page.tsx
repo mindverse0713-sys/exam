@@ -258,27 +258,6 @@ export default function ExamsEditorPage() {
       return
     }
 
-    // Validate matching right side before saving
-    if (currentExam.public_sections?.matching?.right) {
-      const invalidItems: number[] = []
-      currentExam.public_sections.matching.right.forEach((item: any, idx: number) => {
-        const strValue = String(item || '').trim()
-        const isNumber = typeof item === 'number' || 
-                        /^[\d.]+$/.test(strValue) || 
-                        /^\d+\.?\d*$/.test(strValue) ||
-                        /^[\d]+\.?[\d]*$/.test(strValue)
-        if (isNumber && strValue !== '') {
-          invalidItems.push(idx + 1)
-        }
-      })
-      
-      if (invalidItems.length > 0) {
-        alert(`Алдаа: Харгалзуулах асуултын баруун талд тоонууд байна (байрлал: ${invalidItems.join(', ')}). Текст оруулах хэрэгтэй!\n\nЖишээ: Icon, Grid, Monochromatic palette, Alignment, Contrast`)
-        setSaving(false)
-        return
-      }
-    }
-
     setSaving(true)
     try {
       const res = await fetch(`/api/admin/exams?pass=${password}`, {
