@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const startExamSchema = z.object({
   name: z.string().min(1, 'Нэрээ оруулна уу'),
-  grade: z.union([z.literal(10), z.literal(11), z.literal(12)]),
+  grade: z.number().int().min(1, 'Анги зөв оруулна уу'),
   variant: z.union([z.literal('A'), z.literal('B')]),
 })
 

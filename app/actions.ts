@@ -20,11 +20,6 @@ export async function startExam(formData: FormData) {
       throw new Error(errorMessage)
     }
 
-    if (![10, 11, 12].includes(rawData.grade)) {
-      errorMessage = 'Зөв анги сонгоно уу (10, 11, эсвэл 12)'
-      throw new Error(errorMessage)
-    }
-
     if (!['A', 'B'].includes(rawData.variant)) {
       errorMessage = 'Зөв хувилбар сонгоно уу (A эсвэл B)'
       throw new Error(errorMessage)
@@ -46,7 +41,7 @@ export async function startExam(formData: FormData) {
     try {
       parsed = startExamSchema.parse({
         name: rawData.name,
-        grade: rawData.grade as 10 | 11 | 12,
+        grade: rawData.grade,
         variant: rawData.variant as 'A' | 'B',
       })
     } catch (zodError: any) {
