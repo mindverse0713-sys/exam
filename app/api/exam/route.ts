@@ -89,31 +89,34 @@ export async function GET(request: NextRequest) {
         .map((item: any, idx: number) => {
           const strValue = String(item || '').trim()
           
-          // Check if item is a number (including decimals)
-          const isNumber = typeof item === 'number' || 
-                          (strValue.length <= 10 && /^[\d.]+$/.test(strValue)) || 
-                          /^\d+\.?\d*$/.test(strValue) ||
-                          /^[\d]+\.?[\d]*$/.test(strValue)
-          
-          // If it's a number, skip it completely
-          if (isNumber && strValue !== '') {
+          // Skip empty values
+          if (strValue === '') {
             return null
           }
           
-          // Skip empty or very short values
-          if (strValue === '' || strValue.length < 2) {
+          // Check if item is a pure number (including decimals)
+          // Only filter if it's EXACTLY a number with no letters
+          const isPureNumber = typeof item === 'number' || 
+                              (strValue.length <= 10 && /^[\d.]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) || 
+                              (/^\d+\.?\d*$/.test(strValue) && !/[a-zA-Z]/.test(strValue))
+          
+          // If it's a pure number, skip it
+          if (isPureNumber) {
+            console.log(`Filtering out pure number at index ${idx}: ${item}`)
             return null
           }
           
-          // Skip if it's only digits and dots
-          if (/^[\d.\s]+$/.test(strValue)) {
+          // Skip if it's only digits, dots, and whitespace (no letters)
+          if (/^[\d.\s]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) {
+            console.log(`Filtering out number-like string at index ${idx}: ${item}`)
             return null
           }
           
-          // Return valid text
+          // Return valid text (has at least one letter)
+          console.log(`Keeping valid text at index ${idx}: "${strValue}"`)
           return strValue
         })
-        .filter((item: string | null): item is string => item !== null && item.trim() !== '' && item.length >= 2)
+        .filter((item: string | null): item is string => item !== null && item.trim() !== '')
       
       console.log('Matching right after processing:', original)
       console.log('Filtered out count:', (sections.matching.right?.length || 0) - original.length)
@@ -138,25 +141,31 @@ export async function GET(request: NextRequest) {
         .map((item: any, idx: number) => {
           const strValue = String(item || '').trim()
           
-          // Check if item looks like a number (including decimals)
-          const isNumber = typeof item === 'number' || 
-                          /^[\d.]+$/.test(strValue) || 
-                          /^\d+\.?\d*$/.test(strValue) ||
-                          /^[\d]+\.?[\d]*$/.test(strValue) ||
-                          (strValue.length <= 5 && /^[\d.]+$/.test(strValue.replace(/[^\d.]/g, '')))
-          
-          if (isNumber && strValue !== '') {
-            console.error(`ERROR: Matching right item ${idx} is a number (${item}) instead of text!`)
+          // Skip empty values
+          if (strValue === '') {
             return null
           }
           
-          if (strValue === '' || strValue.length < 2 || /^[\d.\s]+$/.test(strValue)) {
+          // Check if item is a pure number (including decimals)
+          // Only filter if it's EXACTLY a number with no letters
+          const isPureNumber = typeof item === 'number' || 
+                              (strValue.length <= 10 && /^[\d.]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) || 
+                              (/^\d+\.?\d*$/.test(strValue) && !/[a-zA-Z]/.test(strValue))
+          
+          // If it's a pure number, skip it
+          if (isPureNumber) {
             return null
           }
           
+          // Skip if it's only digits, dots, and whitespace (no letters)
+          if (/^[\d.\s]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) {
+            return null
+          }
+          
+          // Return valid text (has at least one letter)
           return strValue
         })
-        .filter((item: string | null): item is string => item !== null && item.trim() !== '' && item.length >= 2)
+        .filter((item: string | null): item is string => item !== null && item.trim() !== '')
       const shuffled = [...original]
       // Fisher-Yates shuffle with index tracking
       const indices = original.map((_: string, idx: number) => idx) // Track original indices
@@ -182,46 +191,36 @@ export async function GET(request: NextRequest) {
         .eq('id', attemptId)
     }
 
-    // Final validation - remove any numbers that slipped through
+    // Final validation - remove any numbers that slipped through (but keep valid text)
     if (sections.match && sections.match.right) {
       console.log('=== FINAL VALIDATION ===')
       console.log('Before final validation:', sections.match.right)
-      console.log('Types:', sections.match.right.map((item: any) => typeof item))
       
       sections.match.right = sections.match.right
         .map((item: any, idx: number) => {
           const strValue = String(item || '').trim()
-          const isNumber = typeof item === 'number' || 
-                          (strValue.length <= 10 && /^[\d.]+$/.test(strValue)) || 
-                          /^\d+\.?\d*$/.test(strValue)
           
-          if (isNumber) {
-            console.log(`Filtering out number at index ${idx}: ${item}`)
+          // Skip empty
+          if (strValue === '') {
             return null
           }
           
+          // Only filter pure numbers (no letters)
+          const isPureNumber = typeof item === 'number' || 
+                              (strValue.length <= 10 && /^[\d.]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) || 
+                              (/^\d+\.?\d*$/.test(strValue) && !/[a-zA-Z]/.test(strValue))
+          
+          if (isPureNumber) {
+            console.log(`Filtering out pure number at index ${idx}: ${item}`)
+            return null
+          }
+          
+          // Keep valid text (has letters)
           return strValue
         })
-        .filter((item: string | null): item is string => item !== null && item.trim() !== '' && item.length >= 2)
+        .filter((item: string | null): item is string => item !== null && item.trim() !== '')
       
       console.log('After final validation:', sections.match.right)
-      
-      // If still has numbers, force filter one more time
-      const stillHasNumbers = sections.match.right.some((item: any) => {
-        const strValue = String(item || '').trim()
-        return typeof item === 'number' || /^[\d.]+$/.test(strValue)
-      })
-      
-      if (stillHasNumbers) {
-        console.error('CRITICAL: Still has numbers after final validation! Force filtering...')
-        sections.match.right = sections.match.right
-          .filter((item: any) => {
-            const strValue = String(item || '').trim()
-            const isNumber = typeof item === 'number' || /^[\d.]+$/.test(strValue)
-            return !isNumber && strValue.length >= 2
-          })
-        console.log('After force filter:', sections.match.right)
-      }
     }
 
     return NextResponse.json({
