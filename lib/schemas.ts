@@ -2,7 +2,11 @@ import { z } from 'zod'
 
 export const startExamSchema = z.object({
   name: z.string().min(1, 'Нэрээ оруулна уу'),
-  grade: z.number().int().min(1, 'Анги зөв оруулна уу'),
+  // Allow formats like 9, 9-1, 11A, 12-B зэрэг текстэн анги
+  grade: z
+    .string()
+    .min(1, 'Ангиа оруулна уу')
+    .regex(/^[0-9A-Za-z_-]+$/, 'Анги зөв форматтай байх хэрэгтэй (жишээ: 9-1, 10A)'),
   variant: z.union([z.literal('A'), z.literal('B')]),
 })
 

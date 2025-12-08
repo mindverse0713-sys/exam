@@ -15,17 +15,15 @@ type MatchingSection = {
 
 type PublicSections = {
   mcq: MCQQuestion[]
-  matching: MatchingSection
 }
 
 type AnswerKey = {
   mcqKey: Record<string, string>
-  matchKey: Record<string, number>
 }
 
 type Exam = {
   id: string
-  grade: number
+  grade: string
   variant: string
   public_sections: PublicSections
   answer_key: AnswerKey
@@ -38,7 +36,7 @@ export default function ExamsEditorPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedGrade, setSelectedGrade] = useState<number>(10)
+  const [selectedGrade, setSelectedGrade] = useState<string>('10')
   const [selectedVariant, setSelectedVariant] = useState<string>('A')
   const [currentExam, setCurrentExam] = useState<Exam | null>(null)
   const [saving, setSaving] = useState(false)
@@ -54,14 +52,8 @@ export default function ExamsEditorPage() {
         options: { A: '', B: '', C: '', D: '' }
       }))
 
-  const buildDefaultMatching = () => ({
-    left: Array(MAX_MATCH).fill(''),
-    right: Array(MAX_MATCH).fill('')
-  })
-
   const buildDefaultAnswerKeys = () => ({
-    mcqKey: Object.fromEntries(Array(MAX_MCQ).fill(0).map((_, i) => [String(i + 1), 'A'])),
-    matchKey: Object.fromEntries(Array(MAX_MATCH).fill(0).map((_, i) => [String(i + 1), 1]))
+    mcqKey: Object.fromEntries(Array(MAX_MCQ).fill(0).map((_, i) => [String(i + 1), 'A']))
   })
 
   const rebuildMcqKey = (len: number, prevKey: Record<string, string> = {}) =>
@@ -69,21 +61,6 @@ export default function ExamsEditorPage() {
       Array(len)
         .fill(0)
         .map((_, i) => [String(i + 1), prevKey[String(i + 1)] || 'A'])
-    )
-
-  const rebuildMatchKey = (
-    leftLen: number,
-    rightLen: number,
-    prevKey: Record<string, number> = {}
-  ) =>
-    Object.fromEntries(
-      Array(leftLen)
-        .fill(0)
-        .map((_, i) => {
-          const prev = prevKey[String(i + 1)]
-          const val = prev && prev <= rightLen ? prev : rightLen > 0 ? 1 : 0
-          return [String(i + 1), val]
-        })
     )
 
   // Check for existing auth on mount
@@ -193,12 +170,11 @@ export default function ExamsEditorPage() {
     setSaving(true)
     try {
       // Create empty exam template
-      const newExam = {
-        grade: selectedGrade,
+    const newExam = {
+        grade: selectedGrade.trim(),
         variant: selectedVariant,
         public_sections: {
           mcq: buildDefaultMcq(),
-          matching: buildDefaultMatching()
         },
         answer_key: buildDefaultAnswerKeys()
       }
@@ -531,12 +507,11 @@ export default function ExamsEditorPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Анги</label>
               <input
-                type="number"
-                min={1}
+                type="text"
                 value={selectedGrade}
-                onChange={(e) => setSelectedGrade(parseInt(e.target.value || '0'))}
+                onChange={(e) => setSelectedGrade(e.target.value)}
                 className="px-4 py-2 border rounded w-32"
-                placeholder="Анги"
+                placeholder="Жишээ: 9-1"
               />
             </div>
             <div>

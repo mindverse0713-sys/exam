@@ -10,7 +10,7 @@ export default function StartForm() {
   const urlVariant = searchParams.get('v')
   
   const [name, setName] = useState('')
-  const [grade, setGrade] = useState<10 | 11 | 12 | ''>(urlGrade ? parseInt(urlGrade) as 10 | 11 | 12 : '')
+  const [grade, setGrade] = useState<string>(urlGrade ? urlGrade : '')
   const [variant, setVariant] = useState<'A' | 'B' | ''>(urlVariant ? urlVariant as 'A' | 'B' : 'A')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -20,13 +20,13 @@ export default function StartForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!name.trim() || !grade || !variant) return
+    if (!name.trim() || !grade.trim() || !variant) return
 
     setError(null)
     setIsSubmitting(true)
     const formData = new FormData()
     formData.append('name', name.trim())
-    formData.append('grade', grade.toString())
+    formData.append('grade', grade.trim())
     formData.append('variant', variant)
 
     try {
@@ -84,25 +84,17 @@ export default function StartForm() {
 
         <div>
           <label className="block text-sm font-medium mb-2">
-            Ангиа сонгоно уу (10 / 11 / 12)
+            Анги (жишээ: 9-1, 10, 11B)
           </label>
-          <div className="flex gap-4">
-            {[10, 11, 12].map((g) => (
-              <label key={g} className="flex items-center">
-                <input
-                  type="radio"
-                  name="grade"
-                  value={g}
-                  checked={grade === g}
-                  onChange={() => setGrade(g as 10 | 11 | 12)}
-                  disabled={!!(isLocked && urlGrade && parseInt(urlGrade) !== g)}
-                  required
-                  className="mr-2"
-                />
-                <span>{g}-р анги</span>
-              </label>
-            ))}
-          </div>
+          <input
+            type="text"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            disabled={!!(isLocked && urlGrade)}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Жишээ: 9-1"
+          />
         </div>
 
         <div>

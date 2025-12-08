@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       .eq('active', true)
 
     if (gradeParam) {
-      query = query.eq('grade', parseInt(gradeParam))
+      query = query.eq('grade', gradeParam)
     }
 
     if (variantParam) {

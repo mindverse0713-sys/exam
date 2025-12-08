@@ -10,7 +10,7 @@ export async function startExam(formData: FormData) {
   try {
     const rawData = {
       name: formData.get('name')?.toString() || '',
-      grade: parseInt(formData.get('grade')?.toString() || '0'),
+      grade: (formData.get('grade')?.toString() || '').trim(),
       variant: formData.get('variant')?.toString() || '',
     }
 
