@@ -19,31 +19,31 @@ export async function GET(request: NextRequest) {
   const variantParam = request.nextUrl.searchParams.get('variant')
 
   try {
-    let query = supabaseAdmin
+    // Always fetch all active exams; filter in code to handle numeric/text grades
+    const { data: exams, error } = await supabaseAdmin
       .from('exams')
       .select('*')
       .eq('active', true)
-
-    if (gradeParam) {
-      query = query.eq('grade', gradeParam)
-    }
-
-    if (variantParam) {
-      query = query.eq('variant', variantParam)
-    }
-
-    const { data: exams, error } = await query
 
     if (error) {
       console.error('Exams fetch error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Map sections_public to public_sections for frontend compatibility
-    const mappedExams = exams?.map((exam: any) => ({
+    // Map sections_public and normalize grade as string
+    let mappedExams = exams?.map((exam: any) => ({
       ...exam,
+      grade: exam.grade?.toString?.() || '',
       public_sections: exam.sections_public || exam.public_sections
     })) || []
+
+    // Optional client-side filter (after normalizing grade)
+    if (gradeParam) {
+      mappedExams = mappedExams.filter((e: any) => e.grade === gradeParam)
+    }
+    if (variantParam) {
+      mappedExams = mappedExams.filter((e: any) => e.variant === variantParam)
+    }
 
     return NextResponse.json({ exams: mappedExams })
   } catch (err) {

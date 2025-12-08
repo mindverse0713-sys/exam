@@ -102,12 +102,24 @@ export default function ExamsEditorPage() {
       const res = await fetch(`/api/admin/exams?pass=${pass}`)
       const data = await res.json()
       if (res.ok) {
-        setExams(data.exams || [])
+        const normalized = (data.exams || []).map((e: Exam) => ({
+          ...e,
+          grade: e.grade?.toString?.() || '',
+        }))
+        setExams(normalized)
+
+        // Try to keep current selection; otherwise pick first available
         const exam =
-          data.exams?.find(
+          normalized.find(
             (e: Exam) => e.grade === selectedGrade && e.variant === selectedVariant
-          ) || data.exams?.[0] || null
+          ) || normalized[0] || null
         setCurrentExam(exam || null)
+
+        // If no current selection, set defaults from the first exam
+        if (!currentExam && exam) {
+          setSelectedGrade(exam.grade)
+          setSelectedVariant(exam.variant)
+        }
       }
     } catch (err) {
       console.error(err)
