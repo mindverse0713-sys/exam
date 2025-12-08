@@ -9,10 +9,6 @@ interface ExamData {
   variant: string
   sections: {
     mcq: Array<{ i: number; q: string; options: string[] }>
-    match: {
-      left: string[]
-      right: string[]
-    }
   }
   durationSec: number
 }
@@ -33,7 +29,6 @@ export default function ExamPage() {
 
   // Answers state
   const [answersMcq, setAnswersMcq] = useState<Record<string, string>>({})
-  const [answersMatch, setAnswersMatch] = useState<Record<string, number>>({})
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -42,7 +37,7 @@ export default function ExamPage() {
       const formData = new FormData()
       formData.append('attemptId', attemptId)
       formData.append('answersMcq', JSON.stringify(answersMcq))
-      formData.append('answersMatch', JSON.stringify(answersMatch))
+      formData.append('answersMatch', JSON.stringify({}))
       if (startedAt) {
         formData.append('clientStartedAt', startedAt.toString())
       }
@@ -62,7 +57,7 @@ export default function ExamPage() {
       timerRef.current = null
     }
     await doSubmit()
-  }, [isSubmitting, attemptId, answersMcq, answersMatch, startedAt, router])
+  }, [isSubmitting, attemptId, answersMcq, startedAt, router])
 
   // Load exam data
   useEffect(() => {
@@ -206,89 +201,6 @@ export default function ExamPage() {
             </div>
           </section>
 
-          {/* Section II: Matching */}
-          <section>
-            <h2 className="text-xl font-bold mb-4">II. ХАРГАЛЗУУЛАХ — 8 асуулт</h2>
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="font-semibold mb-2">Зүүн</h3>
-                <ul className="space-y-2">
-                  {examData.sections.match.left.map((item, idx) => (
-                    <li key={idx} className="p-2 bg-gray-50 rounded">
-                      {idx + 1}. {String(item || '')}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Баруун (шуурандсан)</h3>
-                {examData.sections.match.right && examData.sections.match.right.length > 0 ? (
-                  <ul className="space-y-2">
-                    {examData.sections.match.right.map((item, idx) => (
-                      <li key={idx} className="p-2 bg-gray-50 rounded">
-                        {idx + 1}. {String(item || '')}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="p-4 bg-yellow-100 border-2 border-yellow-300 rounded text-yellow-800">
-                    <strong>Анхаар:</strong> Харгалзуулах асуултын баруун тал хоосон байна. Админ хуудаснаас зөв текст өгөгдөл оруулах хэрэгтэй.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Matching table */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2">
-                Сонгосон хариултаа тэмдэглэх хүснэгт (баруун талын дугаарыг бичнэ үү)
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 px-4 py-2">Зүүн №</th>
-                      <th className="border border-gray-300 px-4 py-2">Сонгосон баруун №</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {examData.sections.match.left.map((_, leftIdx) => {
-                      const qNum = (leftIdx + 1).toString()
-                      return (
-                        <tr key={leftIdx}>
-                          <td className="border border-gray-300 px-4 py-2 text-center font-medium">
-                            {qNum}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2">
-                            <input
-                              type="number"
-                              min="1"
-                              max={examData.sections.match.right?.length || 0}
-                              value={answersMatch[qNum] || ''}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value)
-                                const maxVal = examData.sections.match.right?.length || 0
-                                if (val >= 1 && val <= maxVal) {
-                                  setAnswersMatch({ ...answersMatch, [qNum]: val })
-                                } else if (e.target.value === '') {
-                                  const newAnswers = { ...answersMatch }
-                                  delete newAnswers[qNum]
-                                  setAnswersMatch(newAnswers)
-                                }
-                              }}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-center"
-                              placeholder="№"
-                              disabled={!examData.sections.match.right || examData.sections.match.right.length === 0}
-                            />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
 
           {/* Submit button */}
           <div className="pt-6 border-t">
