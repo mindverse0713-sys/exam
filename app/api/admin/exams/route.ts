@@ -6,20 +6,14 @@ const ADMIN_PASS = process.env.ADMIN_PASS || 'change_me'
 function checkAuth(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
   const password = authHeader?.replace('Bearer ', '') || request.nextUrl.searchParams.get('pass')
-  console.log('Checking auth:', { password, ADMIN_PASS })
   return password === ADMIN_PASS
 }
 
 // GET: Бүх сорилууд эсвэл нэг сорил авах
 export async function GET(request: NextRequest) {
-  console.log('GET /api/admin/exams called')
-  
   if (!checkAuth(request)) {
-    console.log('Auth failed')
     return NextResponse.json({ error: 'Нэвтрэх эрх хүрэхгүй' }, { status: 401 })
   }
-  
-  console.log('Auth passed')
 
   const gradeParam = request.nextUrl.searchParams.get('grade')
   const variantParam = request.nextUrl.searchParams.get('variant')
