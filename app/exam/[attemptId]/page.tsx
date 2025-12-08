@@ -222,11 +222,7 @@ export default function ExamPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-2">Баруун (шуурандсан)</h3>
-                {examData.sections.match.right.length === 0 ? (
-                  <div className="p-4 bg-yellow-100 border-2 border-yellow-300 rounded text-yellow-800">
-                    <strong>Анхаар:</strong> Харгалзуулах асуултын баруун тал хоосон байна. Админ хуудаснаас зөв текст өгөгдөл оруулах хэрэгтэй.
-                  </div>
-                ) : (
+                {examData.sections.match.right && examData.sections.match.right.length > 0 ? (
                   <ul className="space-y-2">
                     {examData.sections.match.right.map((item, idx) => (
                       <li key={idx} className="p-2 bg-gray-50 rounded">
@@ -234,6 +230,10 @@ export default function ExamPage() {
                       </li>
                     ))}
                   </ul>
+                ) : (
+                  <div className="p-4 bg-yellow-100 border-2 border-yellow-300 rounded text-yellow-800">
+                    <strong>Анхаар:</strong> Харгалзуулах асуултын баруун тал хоосон байна. Админ хуудаснаас зөв текст өгөгдөл оруулах хэрэгтэй.
+                  </div>
                 )}
               </div>
             </div>
@@ -263,11 +263,12 @@ export default function ExamPage() {
                             <input
                               type="number"
                               min="1"
-                              max={examData.sections.match.right.length}
+                              max={examData.sections.match.right?.length || 0}
                               value={answersMatch[qNum] || ''}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value)
-                                if (val >= 1 && val <= examData.sections.match.right.length) {
+                                const maxVal = examData.sections.match.right?.length || 0
+                                if (val >= 1 && val <= maxVal) {
                                   setAnswersMatch({ ...answersMatch, [qNum]: val })
                                 } else if (e.target.value === '') {
                                   const newAnswers = { ...answersMatch }
@@ -277,6 +278,7 @@ export default function ExamPage() {
                               }}
                               className="w-full px-2 py-1 border border-gray-300 rounded text-center"
                               placeholder="№"
+                              disabled={!examData.sections.match.right || examData.sections.match.right.length === 0}
                             />
                           </td>
                         </tr>

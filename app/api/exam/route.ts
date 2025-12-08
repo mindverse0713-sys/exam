@@ -37,23 +37,6 @@ export async function GET(request: NextRequest) {
     // Transform sections for client
     const sections = { ...exam.sections_public }
     
-    // Debug: Log the raw data structure
-    console.log('=== EXAM API DEBUG ===')
-    console.log('Raw sections_public type:', typeof exam.sections_public)
-    console.log('Raw sections_public:', JSON.stringify(exam.sections_public, null, 2))
-    console.log('Matching data:', sections.matching)
-    if (sections.matching) {
-      console.log('Matching right type:', typeof sections.matching.right)
-      console.log('Matching right is array:', Array.isArray(sections.matching.right))
-      console.log('Matching right length:', sections.matching.right?.length)
-      console.log('Matching right values:', sections.matching.right)
-      if (sections.matching.right) {
-        sections.matching.right.forEach((item: any, idx: number) => {
-          console.log(`  Right[${idx}]:`, item, 'Type:', typeof item, 'IsNumber:', typeof item === 'number')
-        })
-      }
-    }
-    
     // Transform MCQ options from object to array
     if (sections.mcq && Array.isArray(sections.mcq)) {
       sections.mcq = sections.mcq.map((q: any, idx: number) => {
@@ -75,18 +58,9 @@ export async function GET(request: NextRequest) {
     // shuffleMapping[i] = original index (1-based) of item at shuffled position i+1
     let shuffleMapping: number[] = []
     if (sections.matching && sections.matching.right) {
-      // Debug: Log what we're getting
-      console.log('=== MATCHING RIGHT PROCESSING ===')
-      console.log('Matching right before processing:', sections.matching.right)
-      console.log('Type of right items:', sections.matching.right.map((item: any) => typeof item))
-      console.log('Right items details:')
-      sections.matching.right.forEach((item: any, idx: number) => {
-        console.log(`  [${idx}]: "${item}" (type: ${typeof item}, length: ${String(item).length})`)
-      })
-      
       // Filter out numbers and keep only valid text entries
       const original = (sections.matching.right || [])
-        .map((item: any, idx: number) => {
+        .map((item: any) => {
           const strValue = String(item || '').trim()
           
           // Skip empty values
@@ -102,24 +76,18 @@ export async function GET(request: NextRequest) {
           
           // If it's a pure number, skip it
           if (isPureNumber) {
-            console.log(`Filtering out pure number at index ${idx}: ${item}`)
             return null
           }
           
           // Skip if it's only digits, dots, and whitespace (no letters)
           if (/^[\d.\s]+$/.test(strValue) && !/[a-zA-Z]/.test(strValue)) {
-            console.log(`Filtering out number-like string at index ${idx}: ${item}`)
             return null
           }
           
           // Return valid text (has at least one letter)
-          console.log(`Keeping valid text at index ${idx}: "${strValue}"`)
           return strValue
         })
         .filter((item: string | null): item is string => item !== null && item.trim() !== '')
-      
-      console.log('Matching right after processing:', original)
-      console.log('Filtered out count:', (sections.matching.right?.length || 0) - original.length)
       const shuffled = [...original]
       // Fisher-Yates shuffle with index tracking
       const indices = original.map((_: string, idx: number) => idx) // Track original indices
@@ -193,11 +161,8 @@ export async function GET(request: NextRequest) {
 
     // Final validation - remove any numbers that slipped through (but keep valid text)
     if (sections.match && sections.match.right) {
-      console.log('=== FINAL VALIDATION ===')
-      console.log('Before final validation:', sections.match.right)
-      
       sections.match.right = sections.match.right
-        .map((item: any, idx: number) => {
+        .map((item: any) => {
           const strValue = String(item || '').trim()
           
           // Skip empty
@@ -211,7 +176,6 @@ export async function GET(request: NextRequest) {
                               (/^\d+\.?\d*$/.test(strValue) && !/[a-zA-Z]/.test(strValue))
           
           if (isPureNumber) {
-            console.log(`Filtering out pure number at index ${idx}: ${item}`)
             return null
           }
           
@@ -219,8 +183,6 @@ export async function GET(request: NextRequest) {
           return strValue
         })
         .filter((item: string | null): item is string => item !== null && item.trim() !== '')
-      
-      console.log('After final validation:', sections.match.right)
     }
 
     return NextResponse.json({
