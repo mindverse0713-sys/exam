@@ -75,11 +75,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ID, grade, variant шаардлагатай' }, { status: 400 })
     }
 
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    }
+    const updateData: any = {}
 
     if (public_sections) {
+      // Validate matching right side - ensure it contains text, not numbers
+      if (public_sections.matching && public_sections.matching.right) {
+        const invalidItems = public_sections.matching.right
+          .map((item: any, idx: number) => {
+            const strValue = String(item || '').trim()
+            const isNumber = typeof item === 'number' || 
+                            /^[\d.]+$/.test(strValue) || 
+                            /^\d+\.?\d*$/.test(strValue)
+            if (isNumber && strValue !== '') {
+              return { index: idx, value: item }
+            }
+            return null
+          })
+          .filter((item: any) => item !== null)
+        
+        if (invalidItems.length > 0) {
+          console.error('Invalid matching right items (numbers instead of text):', invalidItems)
+          return NextResponse.json({ 
+            error: `Харгалзуулах асуултын баруун талд тоонууд байна. Текст оруулах хэрэгтэй. Алдаатай байрлал: ${invalidItems.map((i: any) => i.index + 1).join(', ')}` 
+          }, { status: 400 })
+        }
+      }
+      
       updateData.sections_public = public_sections // Use correct column name
     }
 

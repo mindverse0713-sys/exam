@@ -215,20 +215,26 @@ export default function ExamPage() {
                 <ul className="space-y-2">
                   {examData.sections.match.left.map((item, idx) => (
                     <li key={idx} className="p-2 bg-gray-50 rounded">
-                      {idx + 1}. {item}
+                      {idx + 1}. {String(item || '')}
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
                 <h3 className="font-semibold mb-2">Баруун (шуурандсан)</h3>
-                <ul className="space-y-2">
-                  {examData.sections.match.right.map((item, idx) => (
-                    <li key={idx} className="p-2 bg-gray-50 rounded">
-                      {idx + 1}. {item}
-                    </li>
-                  ))}
-                </ul>
+                {examData.sections.match.right.length === 0 ? (
+                  <div className="p-4 bg-yellow-100 border-2 border-yellow-300 rounded text-yellow-800">
+                    <strong>Анхаар:</strong> Харгалзуулах асуултын баруун тал хоосон байна. Админ хуудаснаас зөв текст өгөгдөл оруулах хэрэгтэй.
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {examData.sections.match.right.map((item, idx) => (
+                      <li key={idx} className="p-2 bg-gray-50 rounded">
+                        {idx + 1}. {String(item || '')}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 
