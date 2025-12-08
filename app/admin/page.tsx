@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 interface Attempt {
   id: string
   student_name: string
-  grade: number
+  grade: string
   variant: string
   started_at: string
   submitted_at: string | null
@@ -79,7 +79,12 @@ export default function AdminPage() {
 
       if (res.ok) {
         const data = await res.json()
-        setAttempts(data)
+        // Normalize grade to string
+        const normalized = (data || []).map((a: Attempt) => ({
+          ...a,
+          grade: a.grade?.toString?.() || '',
+        }))
+        setAttempts(normalized)
       } else if (res.status === 401) {
         setIsAuthenticated(false)
         sessionStorage.removeItem('admin_auth')
@@ -183,9 +188,13 @@ export default function AdminPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="all">Бүгд</option>
-                <option value="10">10-р анги</option>
-                <option value="11">11-р анги</option>
-                <option value="12">12-р анги</option>
+                {Array.from(new Set(attempts.map((a) => a.grade).filter(Boolean)))
+                  .sort()
+                  .map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
               </select>
             </div>
 

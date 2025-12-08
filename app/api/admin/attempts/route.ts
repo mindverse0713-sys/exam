@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       .order('started_at', { ascending: false })
 
     if (gradeParam && gradeParam !== 'all') {
-      query = query.eq('grade', parseInt(gradeParam))
+      query = query.eq('grade', gradeParam)
     }
 
     if (variantParam && variantParam !== 'all') {
