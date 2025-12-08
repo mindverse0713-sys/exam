@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       console.log('Filtered out count:', (sections.matching.right?.length || 0) - original.length)
       const shuffled = [...original]
       // Fisher-Yates shuffle with index tracking
-      const indices = original.map((_, idx) => idx) // Track original indices
+      const indices = original.map((_: string, idx: number) => idx) // Track original indices
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         // Swap both arrays and indices
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         [indices[i], indices[j]] = [indices[j], indices[i]]
       }
       // Create mapping: shuffled position -> original index (1-based)
-      shuffleMapping = indices.map(idx => idx + 1)
+      shuffleMapping = indices.map((idx: number) => idx + 1)
       sections.match = {
         left: (sections.matching.left || []).map((item: any) => String(item || '')).filter((item: string) => item.trim() !== ''),
         right: shuffled
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
         .filter((item: string | null): item is string => item !== null && item.trim() !== '' && item.length >= 2)
       const shuffled = [...original]
       // Fisher-Yates shuffle with index tracking
-      const indices = original.map((_, idx) => idx) // Track original indices
+      const indices = original.map((_: string, idx: number) => idx) // Track original indices
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         // Swap both arrays and indices
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
         [indices[i], indices[j]] = [indices[j], indices[i]]
       }
       // Create mapping: shuffled position -> original index (1-based)
-      shuffleMapping = indices.map(idx => idx + 1)
+      shuffleMapping = indices.map((idx: number) => idx + 1)
       sections.match = {
         left: (sections.match.left || []).map((item: any) => String(item || '')).filter((item: string) => item.trim() !== ''),
         right: shuffled
