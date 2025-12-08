@@ -8,11 +8,6 @@ type MCQQuestion = {
   options: { A: string; B: string; C: string; D: string }
 }
 
-type MatchingSection = {
-  left: string[]
-  right: string[]
-}
-
 type PublicSections = {
   mcq: MCQQuestion[]
 }
@@ -42,8 +37,6 @@ export default function ExamsEditorPage() {
   const [saving, setSaving] = useState(false)
 
   const MAX_MCQ = 12
-  const MAX_MATCH = 8
-
   const buildDefaultMcq = () =>
     Array(MAX_MCQ)
       .fill(null)
@@ -307,58 +300,6 @@ export default function ExamsEditorPage() {
     })
   }
 
-  // Update matching left item
-  const updateMatchingLeft = (index: number, value: string) => {
-    if (!currentExam) return
-    const newLeft = [...currentExam.public_sections.matching.left]
-    newLeft[index] = value
-    setCurrentExam({
-      ...currentExam,
-      public_sections: {
-        ...currentExam.public_sections,
-        matching: { ...currentExam.public_sections.matching, left: newLeft }
-      }
-    })
-  }
-
-  // Update matching right item
-  const updateMatchingRight = (index: number, value: string) => {
-    if (!currentExam) return
-    
-    // Validate: check if it's a number
-    const strValue = value.trim()
-    const isNumber = /^[\d.]+$/.test(strValue) || 
-                    /^\d+\.?\d*$/.test(strValue) ||
-                    /^[\d]+\.?[\d]*$/.test(strValue)
-    
-    if (isNumber && strValue !== '') {
-      // Don't prevent typing, but show warning in console
-      console.warn(`Warning: Matching right item ${index + 1} appears to be a number: ${value}`)
-    }
-    
-    const newRight = [...currentExam.public_sections.matching.right]
-    newRight[index] = value
-    setCurrentExam({
-      ...currentExam,
-      public_sections: {
-        ...currentExam.public_sections,
-        matching: { ...currentExam.public_sections.matching, right: newRight }
-      }
-    })
-  }
-
-  // Update matching answer key
-  const updateMatchingAnswerKey = (questionNum: number, answerIndex: number) => {
-    if (!currentExam) return
-    setCurrentExam({
-      ...currentExam,
-      answer_key: {
-        ...currentExam.answer_key,
-        matchKey: { ...currentExam.answer_key.matchKey, [questionNum]: answerIndex }
-      }
-    })
-  }
-
   // Add MCQ question (max 12)
   const addMcqQuestion = () => {
     if (!currentExam) return
@@ -396,48 +337,6 @@ export default function ExamsEditorPage() {
     })
   }
 
-  // Add matching row (max 8)
-  const addMatchingRow = () => {
-    if (!currentExam) return
-    const len = currentExam.public_sections.matching.left.length
-    if (len >= MAX_MATCH) {
-      alert('Харгалзуулах асуулт 8-оос ихгүй байна')
-      return
-    }
-    const newLeft = [...currentExam.public_sections.matching.left, '']
-    const newRight = [...currentExam.public_sections.matching.right, '']
-    const newMatchKey = rebuildMatchKey(newLeft.length, newRight.length, currentExam.answer_key.matchKey)
-    setCurrentExam({
-      ...currentExam,
-      public_sections: {
-        ...currentExam.public_sections,
-        matching: { left: newLeft, right: newRight }
-      },
-      answer_key: { ...currentExam.answer_key, matchKey: newMatchKey }
-    })
-  }
-
-  // Remove matching row
-  const removeMatchingRow = (index: number) => {
-    if (!currentExam) return
-    const len = currentExam.public_sections.matching.left.length
-    if (len <= 1) {
-      alert('Дор хаяж 1 харгалзуулах асуулт үлдэх ёстой')
-      return
-    }
-    const newLeft = currentExam.public_sections.matching.left.filter((_, i) => i !== index)
-    const newRight = currentExam.public_sections.matching.right.filter((_, i) => i !== index)
-    const newMatchKey = rebuildMatchKey(newLeft.length, newRight.length, currentExam.answer_key.matchKey)
-    setCurrentExam({
-      ...currentExam,
-      public_sections: {
-        ...currentExam.public_sections,
-        matching: { left: newLeft, right: newRight }
-      },
-      answer_key: { ...currentExam.answer_key, matchKey: newMatchKey }
-    })
-  }
-
   // Reset exam to default template
   const resetExamTemplate = () => {
     if (!currentExam) return
@@ -446,8 +345,7 @@ export default function ExamsEditorPage() {
     setCurrentExam({
       ...currentExam,
       public_sections: {
-        mcq: buildDefaultMcq(),
-        matching: buildDefaultMatching()
+        mcq: buildDefaultMcq()
       },
       answer_key: buildDefaultAnswerKeys()
     })
@@ -627,137 +525,6 @@ export default function ExamsEditorPage() {
               </div>
             </div>
 
-            {/* Matching Questions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Харгалзуулах (Асуулт 13-20)</h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={addMatchingRow}
-                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    ➕ Мөр нэмэх
-                  </button>
-                  <button
-                    onClick={resetExamTemplate}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  >
-                    🔄 Reset
-                  </button>
-                </div>
-              </div>
-              <p className="text-sm text-blue-600 mb-4">
-                💡 Зүүн тал - Асуултууд (1-8) | Баруун тал - Хариултууд (A-H) | Зөв хариултыг доорхи dropdown-оос сонгоно
-              </p>
-              
-              <div className="grid grid-cols-2 gap-6">
-                {/* Left side */}
-                <div className="bg-blue-50 p-4 rounded">
-                  <h3 className="font-semibold mb-3 text-blue-900">📝 Зүүн тал - Асуултууд:</h3>
-                  <div className="space-y-3">
-                    {currentExam?.public_sections?.matching?.left?.map((item, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <span className="font-bold text-blue-700 mt-1 text-sm w-6">{index + 1}.</span>
-                        <textarea
-                          value={item}
-                          onChange={(e) => updateMatchingLeft(index, e.target.value)}
-                          className="flex-1 px-3 py-2 border-2 border-blue-200 rounded focus:border-blue-500 text-sm"
-                          placeholder={`Асуулт ${index + 1} (Шалгалтад ${index + 13}-р асуулт)`}
-                          rows={2}
-                        />
-                        <button
-                          onClick={() => removeMatchingRow(index)}
-                          className="text-red-600 text-sm hover:underline"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Right side */}
-                <div className="bg-green-50 p-4 rounded">
-                  <h3 className="font-semibold mb-3 text-green-900">✅ Баруун тал - Хариултууд:</h3>
-                  <div className="space-y-3">
-                    {currentExam?.public_sections?.matching?.right?.map((item, index) => {
-                      const strValue = String(item || '').trim()
-                      const isNumber = /^[\d.]+$/.test(strValue) || 
-                                      /^\d+\.?\d*$/.test(strValue) ||
-                                      /^[\d]+\.?[\d]*$/.test(strValue)
-                      const hasError = isNumber && strValue !== ''
-                      
-                      return (
-                        <div key={index} className="flex items-start gap-2">
-                          <span className="font-bold text-green-700 mt-1 text-sm w-6">{String.fromCharCode(65 + index)}.</span>
-                          <div className="flex-1">
-                            <textarea
-                              value={item}
-                              onChange={(e) => updateMatchingRight(index, e.target.value)}
-                              className={`w-full px-3 py-2 border-2 rounded focus:outline-none text-sm ${
-                                hasError 
-                                  ? 'border-red-400 bg-red-50 focus:border-red-500' 
-                                  : 'border-green-200 focus:border-green-500'
-                              }`}
-                              placeholder={`Хариулт ${String.fromCharCode(65 + index)} (жишээ: Icon, Grid, Monochromatic palette)`}
-                              rows={2}
-                            />
-                            {hasError && (
-                              <div className="mt-1 text-xs text-red-600 font-semibold">
-                                ⚠️ Алдаа: Тоо байна! Текст оруулах хэрэгтэй (жишээ: Icon, Grid, Alignment)
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => removeMatchingRow(index)}
-                            className="text-red-600 text-sm hover:underline"
-                          >
-                            🗑
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Answer keys for matching */}
-              <div className="mt-6 bg-yellow-50 p-4 rounded">
-                <h3 className="font-semibold mb-3 text-yellow-900">🎯 Зөв харгалзуулалт:</h3>
-                <div className="flex flex-wrap gap-3">
-                  {Array(currentExam?.public_sections?.matching?.left?.length || 0).fill(0).map((_, index) => {
-                    const selectedValue = currentExam?.answer_key?.matchKey?.[String(index + 1)] || 1
-                    return (
-                      <div key={index} className="flex items-center gap-2 bg-yellow-100 px-4 py-2.5 rounded border-2 border-yellow-300 shadow-sm">
-                        <span className="text-base font-bold text-blue-700">{index + 1}</span>
-                        <span className="text-gray-600 font-semibold">→</span>
-                        <div className="relative">
-                          <select
-                            value={selectedValue}
-                            onChange={(e) => updateMatchingAnswerKey(index + 1, parseInt(e.target.value))}
-                            className="px-3 py-2 pr-8 border-2 border-yellow-400 rounded bg-white text-base font-bold text-green-700 focus:border-yellow-500 focus:outline-none cursor-pointer appearance-none min-w-[60px]"
-                          >
-                            {Array(currentExam?.public_sections?.matching?.right?.length || 0).fill(0).map((_, i) => (
-                              <option key={i} value={i + 1}>
-                                {String.fromCharCode(65 + i)}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                            <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="text-xs text-gray-600 mt-3">
-                  Жишээ: "1 - А" гэдэг нь зүүн талын асуулт 1 (шалгалтад 13) → баруун талын хариулт А
-                </p>
-              </div>
-            </div>
           </div>
         )}
       </div>
