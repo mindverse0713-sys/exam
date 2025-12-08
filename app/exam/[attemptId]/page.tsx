@@ -171,7 +171,7 @@ export default function ExamPage() {
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-8">
           {/* Section I: MCQ */}
           <section>
-            <h2 className="text-xl font-bold mb-4">I. ДУГУЙЛАХ — 12 асуулт (сонголт 4)</h2>
+            <h2 className="text-xl font-bold mb-4">ДУГУЙЛАХ — 20 асуулт (сонголт 4)</h2>
             <div className="space-y-6">
               {examData.sections.mcq.map((q) => (
                 <div key={q.i} className="border-b pb-4">

@@ -36,7 +36,7 @@ export default function ExamsEditorPage() {
   const [currentExam, setCurrentExam] = useState<Exam | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const MAX_MCQ = 12
+  const MAX_MCQ = 20
   const buildDefaultMcq = () =>
     Array(MAX_MCQ)
       .fill(null)
@@ -300,12 +300,12 @@ export default function ExamsEditorPage() {
     })
   }
 
-  // Add MCQ question (max 12)
+  // Add MCQ question (max 20)
   const addMcqQuestion = () => {
     if (!currentExam) return
     const len = currentExam.public_sections.mcq.length
     if (len >= MAX_MCQ) {
-      alert('Сонгох асуулт 12-оос ихгүй байна')
+      alert(`Сонгох асуулт ${MAX_MCQ}-оос ихгүй байна`)
       return
     }
     const newMcq = [
@@ -459,7 +459,7 @@ export default function ExamsEditorPage() {
             {/* MCQ Questions */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Сонгох (1-12)</h2>
+                <h2 className="text-xl font-bold">Сонгох (20 хүртэл)</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={addMcqQuestion}
