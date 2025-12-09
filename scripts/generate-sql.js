@@ -2,20 +2,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const exams = JSON.parse(fs.readFileSync(path.join(__dirname, 'exams-output.json'), 'utf8'));
-
-let sql = `-- ============================================
+function generateSQL(exams) {
+  let sql = `-- ============================================
 -- Сорил оруулах SQL
 -- Supabase SQL Editor дээр ажиллуулах
 -- ============================================
 
 `;
 
-for (const exam of exams) {
-  const sectionsPublic = JSON.stringify(exam.sections_public).replace(/'/g, "''");
-  const answerKey = JSON.stringify(exam.answer_key).replace(/'/g, "''");
-  
-  sql += `-- ${exam.grade}-р анги, Хувилбар ${exam.variant}
+  for (const exam of exams) {
+    const sectionsPublic = JSON.stringify(exam.sections_public).replace(/'/g, "''");
+    const answerKey = JSON.stringify(exam.answer_key).replace(/'/g, "''");
+    
+    sql += `-- ${exam.grade}-р анги, Хувилбар ${exam.variant}
 INSERT INTO exams (grade, variant, sections_public, answer_key, active)
 VALUES (
   ${exam.grade},
@@ -31,7 +30,16 @@ DO UPDATE SET
   active = EXCLUDED.active;
 
 `;
+  }
+
+  return sql;
 }
 
-console.log(sql);
+// If run directly, use default file
+if (require.main === module) {
+  const exams = JSON.parse(fs.readFileSync(path.join(__dirname, 'exams-output.json'), 'utf8'));
+  console.log(generateSQL(exams));
+}
+
+module.exports = generateSQL;
 
