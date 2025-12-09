@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [examGrades, setExamGrades] = useState<string[]>([])
 
   // Filters
   const [filterGrade, setFilterGrade] = useState<string>('all')
@@ -35,6 +36,7 @@ export default function AdminPage() {
       setIsAuthenticated(true)
       setPassword(storedPass)
       loadAttempts()
+      loadExamGrades(storedPass)
     }
   }, [])
 
@@ -52,6 +54,7 @@ export default function AdminPage() {
         sessionStorage.setItem('admin_auth', 'true')
         sessionStorage.setItem('admin_pass', password)
         loadAttempts()
+        loadExamGrades()
       } else {
         alert('Нууц үг буруу')
       }
@@ -96,6 +99,28 @@ export default function AdminPage() {
     }
   }
 
+  async function loadExamGrades(passOverride?: string | null) {
+    const pass = passOverride || password || sessionStorage.getItem('admin_pass') || ''
+    if (!pass) return
+
+    try {
+      const res = await fetch('/api/admin/exams', {
+        headers: {
+          Authorization: `Bearer ${pass}`,
+        },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const grades =
+        data?.exams
+          ?.map((e: any) => e?.grade?.toString?.() || '')
+          .filter((g: string) => !!g) || []
+      setExamGrades(Array.from(new Set(grades)))
+    } catch (err) {
+      console.error('Load exam grades error:', err)
+    }
+  }
+
   async function handleExport() {
     setExporting(true)
     try {
@@ -137,8 +162,16 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadAttempts()
+      loadExamGrades()
     }
   }, [filterGrade, filterVariant, dateFrom, dateTo, isAuthenticated])
+
+  const gradeOptions = Array.from(
+    new Set([
+      ...examGrades,
+      ...attempts.map((a) => a.grade).filter(Boolean),
+    ])
+  ).sort()
 
   if (!isAuthenticated) {
     return (
@@ -188,13 +221,11 @@ export default function AdminPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="all">Бүгд</option>
-                {Array.from(new Set(attempts.map((a) => a.grade).filter(Boolean)))
-                  .sort()
-                  .map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
+                {gradeOptions.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -4,13 +4,15 @@ import { useSearchParams } from 'next/navigation'
 import { startExam } from '../actions'
 import { useState } from 'react'
 
+const ALLOWED_GRADES = ['10', '11', '12'] as const
+
 export default function StartForm() {
   const searchParams = useSearchParams()
   const urlGrade = searchParams.get('g')
   const urlVariant = searchParams.get('v')
   
   const [name, setName] = useState('')
-  const [grade, setGrade] = useState<string>(urlGrade ? urlGrade : '')
+  const [grade, setGrade] = useState<string>(urlGrade ? urlGrade : '10')
   const [variant, setVariant] = useState<'A' | 'B' | ''>(urlVariant ? urlVariant as 'A' | 'B' : 'A')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -83,18 +85,20 @@ export default function StartForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">
-            Анги (жишээ: 9-1, 10, 11B)
-          </label>
-          <input
-            type="text"
+          <label className="block text-sm font-medium mb-2">Анги (10, 11, 12)</label>
+          <select
             value={grade}
             onChange={(e) => setGrade(e.target.value)}
             disabled={!!(isLocked && urlGrade)}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Жишээ: 9-1"
-          />
+          >
+            {ALLOWED_GRADES.map((g) => (
+              <option key={g} value={g}>
+                {g}-р анги
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

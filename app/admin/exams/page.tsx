@@ -8,12 +8,19 @@ type MCQQuestion = {
   options: { A: string; B: string; C: string; D: string }
 }
 
+type MatchingSection = {
+  left: string[]
+  right: string[]
+}
+
 type PublicSections = {
   mcq: MCQQuestion[]
+  matching?: MatchingSection
 }
 
 type AnswerKey = {
   mcqKey: Record<string, string>
+  matchKey?: Record<string, number>
 }
 
 type Exam = {
@@ -24,6 +31,8 @@ type Exam = {
   answer_key: AnswerKey
   active: boolean
 }
+
+const ALLOWED_GRADES = ['10', '11', '12'] as const
 
 export default function ExamsEditorPage() {
   const router = useRouter()
@@ -395,13 +404,17 @@ export default function ExamsEditorPage() {
           <div className="flex gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Анги</label>
-              <input
-                type="text"
+              <select
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 className="px-4 py-2 border rounded w-32"
-                placeholder="Жишээ: 9-1"
-              />
+              >
+                {ALLOWED_GRADES.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Хувилбар</label>

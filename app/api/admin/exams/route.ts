@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
 const ADMIN_PASS = process.env.ADMIN_PASS || 'change_me'
+const ALLOWED_GRADES = ['10', '11', '12']
 
 function checkAuth(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -67,6 +68,13 @@ export async function PUT(request: NextRequest) {
 
     if (!id || !grade || !variant) {
       return NextResponse.json({ error: 'ID, grade, variant шаардлагатай' }, { status: 400 })
+    }
+
+    if (!ALLOWED_GRADES.includes(String(grade))) {
+      return NextResponse.json(
+        { error: 'Зөвшөөрөгдсөн анги: 10, 11, 12' },
+        { status: 400 }
+      )
     }
 
     const updateData: any = {}
@@ -136,6 +144,13 @@ export async function POST(request: NextRequest) {
 
     if (!grade || !variant) {
       return NextResponse.json({ error: 'grade, variant шаардлагатай' }, { status: 400 })
+    }
+
+    if (!ALLOWED_GRADES.includes(String(grade))) {
+      return NextResponse.json(
+        { error: '10, 11, 12-р ангиудад л сорил үүсгэж болно' },
+        { status: 400 }
+      )
     }
 
     // Check if exam already exists (including inactive ones)
