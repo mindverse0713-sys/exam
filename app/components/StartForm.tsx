@@ -80,7 +80,7 @@ export default function StartForm() {
             onChange={(e) => setName(e.target.value)}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Оюутны нэр"
+            placeholder="Сурагчийн нэр"
           />
         </div>
 
