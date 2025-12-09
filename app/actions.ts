@@ -106,17 +106,20 @@ export async function submitExam(formData: FormData) {
     const answersMatchJson = formData.get('answersMatch')?.toString()
     const clientStartedAt = formData.get('clientStartedAt')?.toString()
 
-    if (!attemptId || !answersMcqJson || !answersMatchJson) {
+    if (!attemptId || !answersMcqJson) {
       errorMessage = 'Мэдээлэл дутуу байна'
       throw new Error(errorMessage)
     }
 
     let answersMcq: any
-    let answersMatch: any
+    let answersMatch: any = {}
     
     try {
       answersMcq = JSON.parse(answersMcqJson)
-      answersMatch = JSON.parse(answersMatchJson)
+      // answersMatch is optional (only for exams with matching questions)
+      if (answersMatchJson) {
+        answersMatch = JSON.parse(answersMatchJson)
+      }
     } catch (parseError) {
       errorMessage = 'Хариултын формат буруу байна'
       throw new Error(errorMessage)
@@ -192,35 +195,42 @@ export async function submitExam(formData: FormData) {
 
     const answerKey = exam.answer_key as {
       mcqKey: Record<string, string>
-      matchKey: Record<string, number>
+      matchKey?: Record<string, number>
     }
 
-    // Grade MCQ (12 questions)
+    // Grade MCQ (20 questions)
     let mcqScore = 0
-    for (const [qNum, correctAnswer] of Object.entries(answerKey.mcqKey)) {
-      if (answersMcq[qNum] === correctAnswer) {
-        mcqScore++
+    if (answerKey.mcqKey) {
+      for (const [qNum, correctAnswer] of Object.entries(answerKey.mcqKey)) {
+        if (answersMcq[qNum] === correctAnswer) {
+          mcqScore++
+        }
       }
     }
 
-    // Grade Matching (8 questions)
-    // Convert shuffled indices to original indices using shuffle mapping
+    // Grade Matching (optional, only if matchKey exists)
     let matchScore = 0
-    const shuffleMapping = (attempt.meta as any)?.shuffleMapping as number[] | undefined
-    for (const [qNum, correctIndex] of Object.entries(answerKey.matchKey)) {
-      const studentShuffledIndex = parseInt(answersMatch[qNum]?.toString() || '0')
-      // Convert shuffled index (1-based) to original index (1-based)
-      let studentOriginalIndex = studentShuffledIndex
-      if (shuffleMapping && shuffleMapping.length > 0 && studentShuffledIndex > 0 && studentShuffledIndex <= shuffleMapping.length) {
-        studentOriginalIndex = shuffleMapping[studentShuffledIndex - 1] // Convert to 0-based for array access
-      }
-      if (studentOriginalIndex === correctIndex) {
-        matchScore++
+    if (answerKey.matchKey && answersMatch) {
+      const shuffleMapping = (attempt.meta as any)?.shuffleMapping as number[] | undefined
+      for (const [qNum, correctIndex] of Object.entries(answerKey.matchKey)) {
+        const studentShuffledIndex = parseInt(answersMatch[qNum]?.toString() || '0')
+        // Convert shuffled index (1-based) to original index (1-based)
+        let studentOriginalIndex = studentShuffledIndex
+        if (shuffleMapping && shuffleMapping.length > 0 && studentShuffledIndex > 0 && studentShuffledIndex <= shuffleMapping.length) {
+          studentOriginalIndex = shuffleMapping[studentShuffledIndex - 1] // Convert to 0-based for array access
+        }
+        if (studentOriginalIndex === correctIndex) {
+          matchScore++
+        }
       }
     }
 
     const totalScore = mcqScore + matchScore
     const submittedAt = new Date()
+
+    // Calculate total questions (MCQ count + matching count if exists)
+    const totalQuestions = (answerKey.mcqKey ? Object.keys(answerKey.mcqKey).length : 0) + 
+                          (answerKey.matchKey ? Object.keys(answerKey.matchKey).length : 0)
 
     // Calculate duration
     let durationSec: number | null = null
@@ -238,8 +248,9 @@ export async function submitExam(formData: FormData) {
         submitted_at: submittedAt.toISOString(),
         duration_sec: durationSec,
         score: totalScore,
+        total: totalQuestions || 20, // Default to 20 if calculation fails
         answers_mcq: answersMcq,
-        answers_match: answersMatch,
+        answers_match: answersMatch || {},
       })
       .eq('id', attemptId)
 

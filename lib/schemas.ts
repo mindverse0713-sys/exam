@@ -11,7 +11,7 @@ export const startExamSchema = z.object({
 export const submitExamSchema = z.object({
   attemptId: z.string().uuid(),
   answersMcq: z.record(z.string(), z.string()),
-  answersMatch: z.record(z.string(), z.number()),
+  answersMatch: z.record(z.string(), z.number()).optional(),
   clientStartedAt: z.number().optional(),
 })
 
