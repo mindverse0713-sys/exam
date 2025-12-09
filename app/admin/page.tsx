@@ -99,6 +99,33 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteAttempt(id: string) {
+    const confirmed = confirm('Энэ оролдлогыг устгах уу?')
+    if (!confirmed) return
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/attempts?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${password || sessionStorage.getItem('admin_pass')}`,
+        },
+      })
+
+      if (res.ok) {
+        setAttempts((prev) => prev.filter((a) => a.id !== id))
+      } else {
+        const data = await res.json()
+        alert(data?.error || 'Устгах үед алдаа гарлаа')
+      }
+    } catch (err) {
+      console.error('Delete attempt error:', err)
+      alert('Устгах үед алдаа гарлаа')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function loadExamGrades(passOverride?: string | null) {
     const pass = passOverride || password || sessionStorage.getItem('admin_pass') || ''
     if (!pass) return
@@ -305,6 +332,9 @@ export default function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Нийт
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Үйлдэл
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -339,6 +369,15 @@ export default function AdminPage() {
                           {attempt.score ?? '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{attempt.total}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleDeleteAttempt(attempt.id)}
+                            className="text-red-600 hover:underline disabled:text-gray-400"
+                            disabled={loading}
+                          >
+                            Устгах
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}

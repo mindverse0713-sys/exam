@@ -52,3 +52,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  // Check auth
+  const authHeader = request.headers.get('authorization')
+  const password = authHeader?.replace('Bearer ', '')
+
+  if (password !== ADMIN_PASS) {
+    return NextResponse.json({ error: 'Нэвтрэх эрх хүрэхгүй' }, { status: 401 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) {
+    return NextResponse.json({ error: 'ID шаардлагатай' }, { status: 400 })
+  }
+
+  try {
+    const { error } = await supabaseAdmin.from('attempts').delete().eq('id', id)
+
+    if (error) {
+      console.error('Error deleting attempt:', error)
+      return NextResponse.json({ error: 'Устгах үед алдаа гарлаа' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting attempt:', error)
+    return NextResponse.json({ error: 'Устгах үед алдаа гарлаа' }, { status: 500 })
+  }
+}
+
