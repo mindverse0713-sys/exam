@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       console.log(`Сурагчдын тоо: ${gradeAttempts.length}`)
 
       if (gradeAttempts.length === 0) {
-        console.warn(`Анги ${gradeNum} хоосон байна, алгасах`)
+        console.warn(`Анги ${gradeStr} хоосон байна, алгасах`)
         continue
       }
 
@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
 
       // Sheet үүсгэх
       const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows])
-      const sheetName = `${gradeNum}-р анги`
+      const sheetName = `${gradeStr}-р анги`
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
       console.log(`  Sheet "${sheetName}" нэмэгдлээ`)
     }
